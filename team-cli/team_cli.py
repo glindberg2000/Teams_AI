@@ -41,6 +41,9 @@ def print_reminders():
     print("\n[REMINDER]")
     print("- Generate or provide a unique SSH key for each agent.")
     print("- Set up GitHub PAT and Slack tokens as needed.")
+    print(
+        "- Set ANTHROPIC_API_KEY and PERPLEXITY_API_KEY for Taskmaster MCP integration."
+    )
     print("- Review generated docs and configs before launching containers.\n")
     print(
         "- Example: python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --ssh-key ~/.ssh/ai-architect_gl"
@@ -174,7 +177,17 @@ def create_session(args):
     print(f"Generated {env_path} with all crucial variables.")
 
     # --- Check for missing env keys ---
-    missing_keys = [k for k, v in env_vars.items() if not v]
+    required_keys = [
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "SLACK_BOT_TOKEN",
+        "SLACK_TEAM_ID",
+        "GIT_USER_NAME",
+        "GIT_USER_EMAIL",
+        "GIT_SSH_KEY_PATH",
+        "ANTHROPIC_API_KEY",
+        "PERPLEXITY_API_KEY",
+    ]
+    missing_keys = [k for k in required_keys if k not in env_vars or not env_vars[k]]
     if missing_keys:
         print("[ACTION REQUIRED] The following .env keys are missing values:")
         for k in missing_keys:
@@ -237,8 +250,57 @@ def add_role(args):
         sys.exit(1)
     os.makedirs(role_path / "docs", exist_ok=True)
     # Create sample files
-    (role_path / ".env.sample").write_text("# Fill in environment variables\n")
-    (role_path / "mcp_config.template.json").write_text('{\n  "example": "value"\n}\n')
+    (role_path / ".env.sample").write_text(
+        "# Fill in environment variables\nGITHUB_PAT= # (legacy, not used in MCP)\nSLACK_BOT_TOKEN=\nSLACK_TEAM_ID=\nGIT_USER_NAME=\nGIT_USER_EMAIL=\nGITHUB_PERSONAL_ACCESS_TOKEN=\nGIT_SSH_KEY_PATH=/root/.ssh/id_rsa\n# Add other required secrets here\nANTHROPIC_API_KEY= # Required for Taskmaster MCP\nPERPLEXITY_API_KEY= # Required for Taskmaster MCP\n"
+    )
+    # Build mcp_config.template.json with all default servers and taskmaster-ai
+    mcp_config = {
+        "mcpServers": {
+            "puppeteer": {
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+                "env": {},
+            },
+            "github": {
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-github"],
+                "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+                },
+            },
+            "slack": {
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-slack"],
+                "env": {
+                    "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+                    "SLACK_TEAM_ID": "${SLACK_TEAM_ID}",
+                },
+            },
+            "context7": {
+                "command": "npx",
+                "args": ["-y", "@upstash/context7-mcp@latest"],
+            },
+            "taskmaster-ai": {
+                "command": "npx",
+                "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+                "env": {
+                    "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+                    "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}",
+                    "MODEL": "claude-3-7-sonnet-20250219",
+                    "PERPLEXITY_MODEL": "sonar-pro",
+                    "MAX_TOKENS": "64000",
+                    "TEMPERATURE": "0.2",
+                    "DEFAULT_SUBTASKS": "5",
+                    "DEFAULT_PRIORITY": "medium",
+                },
+            },
+        }
+    }
+    import json
+
+    (role_path / "mcp_config.template.json").write_text(
+        json.dumps(mcp_config, indent=2) + "\n"
+    )
     (role_path / "docs/agent_instructions.md").write_text(
         "# Agent Instructions\n\nDescribe the agent's responsibilities here.\n"
     )

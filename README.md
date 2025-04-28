@@ -1,6 +1,6 @@
-# LedgerFlow AI Team Workspace
+# AI Team Workspace
 
-This repository provides full scaffolding and automation for spinning up isolated, role-based AI agent sessions for the LedgerFlow project, including:
+This repository provides full scaffolding and automation for spinning up isolated, role-based AI agent sessions for projects, including:
 
 - Per-session workspaces with isolated code clones
 - Automated DevContainer setup and config sync
