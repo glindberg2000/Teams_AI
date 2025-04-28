@@ -1,0 +1,28 @@
+# Node, Python, and system files
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Environment and secrets
+.env
+sessions/*/.env
+sessions/_shared/env.sample
+sessions/*/payload/.ssh/
+
+# Ignore all generated session folders except for _shared and template
+sessions/*
+!sessions/_shared/
+!sessions/template/
+
+# Workspace folders (per-session clones)
+sessions/*/workspace/
+
+# VS Code and DevContainer
+.vscode/
+.devcontainer/scripts/*.sh~
+
+# Backup and temp files
+*.swp
+*.bak
+*.tmp 
