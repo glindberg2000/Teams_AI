@@ -164,9 +164,21 @@ def create_session(args):
     # Prompt for all env keys if --prompt-all is set
     if hasattr(args, "prompt_all") and args.prompt_all:
         for k in env_vars:
-            val = input(f"Enter value for {k} (leave blank to keep current): ")
-            if val:
-                env_vars[k] = val
+            # Skip GITHUB_PAT if present (legacy, not used)
+            if k == "GITHUB_PAT":
+                continue
+            if k == "GIT_SSH_KEY_PATH":
+                val = input(
+                    f"Enter value for {k} (leave blank to use the generated key at /root/.ssh/id_rsa): "
+                )
+                if not val and updated_env:
+                    env_vars[k] = "/root/.ssh/id_rsa"
+                elif val:
+                    env_vars[k] = val
+            else:
+                val = input(f"Enter value for {k} (leave blank to keep current): ")
+                if val:
+                    env_vars[k] = val
     # Always set GIT_SSH_KEY_PATH if we handled a key
     if updated_env:
         env_vars["GIT_SSH_KEY_PATH"] = "/root/.ssh/id_rsa"
@@ -251,7 +263,7 @@ def add_role(args):
     os.makedirs(role_path / "docs", exist_ok=True)
     # Create sample files
     (role_path / ".env.sample").write_text(
-        "# Fill in environment variables\nGITHUB_PAT= # (legacy, not used in MCP)\nSLACK_BOT_TOKEN=\nSLACK_TEAM_ID=\nGIT_USER_NAME=\nGIT_USER_EMAIL=\nGITHUB_PERSONAL_ACCESS_TOKEN=\nGIT_SSH_KEY_PATH=/root/.ssh/id_rsa\n# Add other required secrets here\nANTHROPIC_API_KEY= # Required for Taskmaster MCP\nPERPLEXITY_API_KEY= # Required for Taskmaster MCP\n"
+        "# Fill in environment variables\nSLACK_BOT_TOKEN=\nSLACK_TEAM_ID=\nGIT_USER_NAME=\nGIT_USER_EMAIL=\nGITHUB_PERSONAL_ACCESS_TOKEN=\nGIT_SSH_KEY_PATH=/root/.ssh/id_rsa # Defaults to generated key if left blank\n# Add other required secrets here\nANTHROPIC_API_KEY= # Required for Taskmaster MCP\nPERPLEXITY_API_KEY= # Required for Taskmaster MCP\n"
     )
     # Build mcp_config.template.json with all default servers and taskmaster-ai
     mcp_config = {
