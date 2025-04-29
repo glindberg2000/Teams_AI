@@ -18,6 +18,7 @@ This repository provides full scaffolding and automation for spinning up isolate
    # Or, to include project docs:
    python team-cli/team_cli.py create-session --name my-coder --role python_coder --project sample_project --generate-ssh-key --prompt-all
    ```
+   > **IMPORTANT:** You will be prompted for all required secrets, including `ANTHROPIC_API_KEY` and `PERPLEXITY_API_KEY` for Taskmaster MCP integration. If you skip these, you **must** fill them in later in the generated `.env` file before running or preparing the session.
 4. **Edit the generated `.env` and docs in your session folder as needed**
 5. **Prepare the payload:**
    ```bash
@@ -43,6 +44,7 @@ This repository provides full scaffolding and automation for spinning up isolate
 - **All generated session folders are ignored by git.**
 - **Store secrets and sensitive configs in a secure location outside git, such as iCloud, 1Password, or your organization's vault.**
 - When onboarding a new machine, restore secrets from your secure backup and use the CLI to generate new sessions.
+- **TIP:** If you ever forget to provide `ANTHROPIC_API_KEY` or `PERPLEXITY_API_KEY` during session creation, simply edit the `.env` file in your session folder and add them before launching or preparing the payload. These are required for Taskmaster MCP features to work.
 
 ## Key Scripts & CLI
 - `team-cli/team_cli.py` — Main CLI for session and agent management. Run with `--help` or `--simple-help` for usage.
