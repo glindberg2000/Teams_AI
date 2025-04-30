@@ -152,4 +152,65 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details on DevContainer sync and best
 - For quick help:
   ```bash
   python team-cli/team_cli.py --simple-help
-  ``` 
+  ```
+
+# LedgerFlow AI Team CLI
+
+## Role-Based Session Management
+
+### How Roles Work
+- Each session is created using a role directory: `roles/<role_name>/`
+- The session name is used as the role name by default
+- If the role directory does not exist, the CLI will warn and fall back to `python_coder`
+
+### Role Directory Structure
+```
+roles/<role_name>/
+  docs/                  # Role-specific documentation (markdown, guides, SOPs, etc.)
+  .env.sample            # Environment variable template for this role
+  mcp_config.template.json # MCP server config template (custom toolset for this role)
+  README.md              # (Optional) Explain the role's purpose and setup
+```
+
+### Custom MCP Config
+- If `mcp_config.template.json` is present in the role directory, it will be used to generate the session's `payload/mcp_config.json`
+- If not, the CLI uses the default MCP config
+- You can define custom tools, servers, or environment variables per role
+
+### Example Role
+- See `roles/example_role/` for a complete template
+- Includes sample docs, env, and MCP config
+- Copy and customize this folder to create new roles
+
+### Creating a New Role
+1. Copy `roles/example_role/` to `roles/<your_role_name>/`
+2. Edit `docs/` to add onboarding, checklists, or SOPs
+3. Edit `.env.sample` for required environment variables
+4. Edit `mcp_config.template.json` for custom tools/servers (optional)
+5. (Optional) Add a `README.md` to explain the role
+
+### Session Creation
+- When you run `create-crew` or `create-session`, the CLI:
+  - Uses the session name as the role
+  - Copies docs from `roles/<role>/docs/` into the session's payload
+  - Uses the role's MCP config if present
+  - Warns and falls back to `python_coder` if the role directory is missing
+
+### Example CLI Output
+```
+Creating session: example_role
+Available roles/templates:
+- pm_guardian
+- example_role
+- python_coder
+Created session 'example_role' from role 'example_role' in project 'example_project'.
+Included docs in session payload: ...
+Using custom MCP config template for role: roles/example_role
+Generated .../payload/mcp_config.json
+```
+
+### Best Practices
+- Always create a role directory for each session type you want to customize
+- Use the example_role as a starting point
+- Keep docs, env, and MCP config together for each role
+- The CLI will always tell you which role and config are being used 

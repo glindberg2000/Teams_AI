@@ -232,11 +232,23 @@ def create_session(args):
     import json
     import re
 
-    # Read the template
+    # Use role's mcp_config.template.json if it exists
     template_path = role_path / "mcp_config.template.json"
-    if not template_path.exists():
+    if template_path.exists():
+        print(f"Using custom MCP config template for role: {role_path}")
+        with open(template_path) as f:
+            template = f.read()
+
+        # Replace all ${VAR} with values from env_vars
+        def replace_var(match):
+            var_name = match.group(1)
+            return env_vars.get(var_name, "")
+
+        config_str = re.sub(r"\${([^}]+)}", replace_var, template)
+        mcp_config = json.loads(config_str)
+    else:
         print(
-            f"[WARNING] No MCP config template found at {template_path}, using default configuration."
+            f"[INFO] No custom MCP config found for role '{role_path}'. Using default MCP config."
         )
         mcp_config = {
             "mcpServers": {
@@ -268,17 +280,6 @@ def create_session(args):
                 },
             }
         }
-    else:
-        with open(template_path) as f:
-            template = f.read()
-
-        # Replace all ${VAR} with values from env_vars
-        def replace_var(match):
-            var_name = match.group(1)
-            return env_vars.get(var_name, "")
-
-        config_str = re.sub(r"\${([^}]+)}", replace_var, template)
-        mcp_config = json.loads(config_str)
 
     # Write to payload
     mcp_config_path = session_path / "payload/mcp_config.json"
@@ -571,16 +572,15 @@ def create_crew(args):
     for session_name, config in sessions.items():
         print(f"\nCreating session: {session_name}")
 
-        # Map session names to roles (you may want to make this configurable)
-        role_mapping = {
-            "pm_guardian": "pm_guardian",
-            "full_stack_dev": "python_coder",
-            "db_guardian": "python_coder",
-            "reviewer": "python_coder",
-            "taskforce": "python_coder",
-        }
-
-        role = role_mapping.get(session_name, "python_coder")
+        # Use session name as role, fallback to python_coder with warning
+        role_dir = ROLES_DIR / session_name
+        if role_dir.exists():
+            role = session_name
+        else:
+            print(
+                f"[WARNING] Role directory 'roles/{session_name}/' not found. Falling back to 'python_coder'. Please create 'roles/{session_name}/' for custom docs and templates."
+            )
+            role = "python_coder"
 
         # Prepare session arguments
         session_args = argparse.Namespace(

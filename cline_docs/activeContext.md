@@ -1,12 +1,11 @@
 # Active Context
 
 ## Current Work
-- Improved documentation handling in team-cli:
-  - Added configurable documentation inclusion in payload directory
-  - Updated restore_payload.sh for proper docs restoration
-  - Added documentation configuration in team env file
-  - Implemented recursive directory copying for docs
-  - Added command-line flags for documentation control
+- Refactored team-cli to use session name as role by default
+- Added support for custom MCP config per role (mcp_config.template.json)
+- Improved CLI feedback: explicit about role directory and MCP config used, warns on fallback
+- Created example_role as a template for new users (with docs, env, and MCP config)
+- Verified that custom docs and MCP config are included in session payloads
 
 ## Recent Changes
 - Implemented proper documentation organization:
@@ -21,17 +20,13 @@
 - Enhanced environment variable propagation
 
 ## Next Steps
-1. Test documentation handling with different configurations
-2. Verify documentation restoration in containers
-3. Consider adding documentation validation
-4. Consider implementing documentation templates
-5. Consider adding custom SSH key naming
-6. Add API key format validation
-7. Consider implementing key rotation capabilities
+1. Document new workflow in README
+2. Encourage users to create custom roles for each session type
+3. Add more sample docs and tools to example_role
+4. Continue testing with new session/role types
 
 ## Current State
 - All core functionality is working correctly
-- Documentation handling is now properly configured and organized
-- Session creation (both single and crew) is working as expected
-- Environment variables and SSH keys are being handled correctly
-- Project-based organization is functioning properly 
+- Role-based docs and custom MCP config are now supported and tested
+- Example role is available for onboarding new users
+- CLI output is clear and user-friendly 
