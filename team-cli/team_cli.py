@@ -338,6 +338,54 @@ def create_session(args):
             "[SECURITY WARNING] .ssh directory is not in .gitignore! Add 'payload/.ssh/' to your .gitignore to prevent accidental commits of private keys."
         )
 
+    # --- DevContainer Setup ---
+    devcontainer_dir = Path(".devcontainer")
+    session_root_dir = session_path  # sessions/<project>/<session>
+    devcontainer_session_dir = session_root_dir / ".devcontainer"
+    devcontainer_session_dir.mkdir(parents=True, exist_ok=True)
+    # Copy Dockerfile
+    dockerfile_src = devcontainer_dir / "Dockerfile"
+    dockerfile_dst = devcontainer_session_dir / "Dockerfile"
+    if dockerfile_src.exists():
+        shutil.copyfile(dockerfile_src, dockerfile_dst)
+        print(f"Copied Dockerfile to {dockerfile_dst}")
+    else:
+        print(f"[WARNING] Dockerfile template not found at {dockerfile_src}")
+    # Copy and patch devcontainer.json
+    devcontainer_json_src = devcontainer_dir / "devcontainer.json"
+    devcontainer_json_dst = devcontainer_session_dir / "devcontainer.json"
+    if devcontainer_json_src.exists():
+        with open(devcontainer_json_src) as f:
+            devcontainer = json.load(f)
+        # Patch name and repo URL
+        patched = False
+        if "name" in devcontainer:
+            devcontainer["name"] = (
+                f"{project}-{name}"
+                if project and name
+                else name or project or "session"
+            )
+            patched = True
+        if (
+            "remoteEnv" in devcontainer
+            and "LEDGERFLOW_REPO_URL" in devcontainer["remoteEnv"]
+        ):
+            repo_url = env_vars.get("REPO_URL", "")
+            if not repo_url:
+                print("[WARNING] REPO_URL not found in env_vars; using placeholder.")
+                repo_url = "https://github.com/your-org/your-repo"
+            devcontainer["remoteEnv"]["LEDGERFLOW_REPO_URL"] = repo_url
+            patched = True
+        with open(devcontainer_json_dst, "w") as f:
+            json.dump(devcontainer, f, indent=4)
+        print(
+            f"Copied and patched devcontainer.json to {devcontainer_json_dst}{' (patched)' if patched else ''}"
+        )
+    else:
+        print(
+            f"[WARNING] devcontainer.json template not found at {devcontainer_json_src}"
+        )
+
     # Reminders for secrets
     print_reminders()
     print(f"Next: Launch the container - the restore script will handle the rest!")
