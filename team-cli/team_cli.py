@@ -3,28 +3,31 @@
 team_cli.py - CLI tool for LedgerFlow AI Team session management
 
 Quickstart:
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --project myproject --ssh-key ~/.ssh/ai-architect_gl
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --generate-ssh-key --prompt-all
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --all-env GIT_USER_NAME=alex GIT_USER_EMAIL=alex@example.com ...
+  python team-cli/team_cli.py create-session --name agent-name --role python_coder --generate-ssh-key --prompt-all
+  python team-cli/team_cli.py create-session --name agent-name --role python_coder --ssh-key ~/.ssh/existing_key
+  python team-cli/team_cli.py create-session --name agent-name --role python_coder --all-env GIT_USER_NAME=alex GIT_USER_EMAIL=alex@example.com ...
 
-Flags:
-  --name         Name of the session/agent (e.g. pm-guardian)
-  --role         Role/template to use (e.g. python_coder)
-  --project      Project name to include project-specific docs (from docs/projects/<project_name>/)
-  --ssh-key      Path to SSH private key to copy into payload (mutually exclusive with --generate-ssh-key)
-  --generate-ssh-key  Generate a new SSH keypair in payload (mutually exclusive with --ssh-key)
-  --prompt-all   Prompt for all .env keys interactively
-  --all-env      Set all .env keys at once (key=value pairs)
-  --github-pat   GitHub Personal Access Token (reminder only)
-  --slack-token  Slack Bot/User Token (reminder only)
+Key Features:
+- Creates isolated agent sessions from role templates
+- Handles SSH key generation/copying
+- Configures environment variables and MCP servers
+- Manages documentation inheritance (global -> project -> role -> session)
+- Generates restore scripts for container setup
 
-Docs organization:
+Required Environment Variables:
+- GIT_USER_NAME, GIT_USER_EMAIL: Git configuration
+- GITHUB_PERSONAL_ACCESS_TOKEN: For GitHub access
+- SLACK_BOT_TOKEN, SLACK_TEAM_ID: For Slack integration
+- ANTHROPIC_API_KEY: For Claude/Taskmaster integration
+- PERPLEXITY_API_KEY: For research capabilities
+
+Directory Structure:
   docs/global/           # Global docs for all agents/projects
   docs/projects/<name>/  # Per-project docs
   roles/<role>/docs/     # Per-role docs
-  sessions/<agent>/docs/ # Per-session docs (copied from above)
+  sessions/<agent>/      # Per-agent isolated environments
 
-See README.md for full onboarding and docs structure.
+See README.md for full documentation and setup instructions.
 """
 import argparse
 import os
@@ -147,7 +150,7 @@ def create_session(args):
 
     # --- .env Handling: always generate from .env.sample ---
     env_sample_path = session_path / ".env.sample"
-    env_path = session_path / ".env"
+    env_path = session_path / "payload/.env"  # Changed to write directly to payload
     env_vars = {}
     if env_sample_path.exists():
         with open(env_sample_path, "r") as f:
@@ -182,11 +185,75 @@ def create_session(args):
     # Always set GIT_SSH_KEY_PATH if we handled a key
     if updated_env:
         env_vars["GIT_SSH_KEY_PATH"] = "/root/.ssh/id_rsa"
-    # Write .env
+    # Write .env to payload
     with open(env_path, "w") as f:
         for k, v in env_vars.items():
             f.write(f"{k}={v}\n")
     print(f"Generated {env_path} with all crucial variables.")
+
+    # --- Generate MCP config ---
+    import json
+    import re
+
+    # Read the template
+    template_path = role_path / "mcp_config.template.json"
+    if not template_path.exists():
+        print(
+            f"[WARNING] No MCP config template found at {template_path}, using default configuration."
+        )
+        mcp_config = {
+            "mcpServers": {
+                "puppeteer": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
+                    "env": {},
+                },
+                "github": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-github"],
+                    "env": {
+                        "GITHUB_PERSONAL_ACCESS_TOKEN": env_vars.get(
+                            "GITHUB_PERSONAL_ACCESS_TOKEN", ""
+                        )
+                    },
+                },
+                "slack": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-slack"],
+                    "env": {
+                        "SLACK_BOT_TOKEN": env_vars.get("SLACK_BOT_TOKEN", ""),
+                        "SLACK_TEAM_ID": env_vars.get("SLACK_TEAM_ID", ""),
+                    },
+                },
+                "context7": {
+                    "command": "npx",
+                    "args": ["-y", "@upstash/context7-mcp@latest"],
+                },
+            }
+        }
+    else:
+        with open(template_path) as f:
+            template = f.read()
+
+        # Replace all ${VAR} with values from env_vars
+        def replace_var(match):
+            var_name = match.group(1)
+            return env_vars.get(var_name, "")
+
+        config_str = re.sub(r"\${([^}]+)}", replace_var, template)
+        mcp_config = json.loads(config_str)
+
+    # Write to payload
+    mcp_config_path = session_path / "payload/mcp_config.json"
+    with open(mcp_config_path, "w") as f:
+        json.dump(mcp_config, f, indent=4)
+    print(f"Generated {mcp_config_path}")
+
+    # --- Copy restore script ---
+    restore_script = session_path / "payload/restore_payload.sh"
+    shutil.copy(SESSIONS_DIR / "_shared/restore_payload.sh", restore_script)
+    os.chmod(restore_script, 0o755)
+    print(f"Added restore script at {restore_script}")
 
     # --- Check for missing env keys ---
     required_keys = [
@@ -235,23 +302,7 @@ def create_session(args):
 
     # Reminders for secrets
     print_reminders()
-    print(
-        f"Next: Edit {session_path}/.env and docs as needed, then run 'prepare-payload'."
-    )
-
-
-def prepare_payload(args):
-    name = args.name or input("Session name to prepare payload for: ").strip()
-    session_path = SESSIONS_DIR / name
-    script_path = session_path / ".devcontainer/scripts/prepare_payload.sh"
-    if not script_path.exists():
-        print(f"No prepare_payload.sh found at {script_path}.")
-        sys.exit(1)
-    print(f"Running: bash {script_path} {name}")
-    os.system(f"bash {script_path} {name}")
-    print(
-        f"Payload prepared for session '{name}'. Inspect payload/ before launching container."
-    )
+    print(f"Next: Launch the container - the restore script will handle the rest!")
 
 
 def add_role(args):
@@ -345,100 +396,64 @@ For more options, run:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="LedgerFlow Team CLI - Session and Agent Management",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        "--simple-help",
-        action="store_true",
-        help="Show a simple getting started guide with examples",
+        description="LedgerFlow AI Team session management CLI",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    # create-session
-    p_create = subparsers.add_parser(
-        "create-session",
-        help="""
-Create a new agent session from a role/template.
-
-Examples:
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --ssh-key ~/.ssh/ai-architect_gl
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --generate-ssh-key
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --prompt-all
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --all-env GIT_USER_NAME=alex GIT_USER_EMAIL=alex@example.com ...
-  python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --project myproject
-
-Flags:
-  --name         Name of the session/agent (e.g. pm-guardian)
-  --role         Role/template to use (e.g. python_coder)
-  --project      Project name to include project-specific docs (from docs/projects/<project_name>/)
-  --ssh-key      Path to SSH private key to copy into payload (mutually exclusive with --generate-ssh-key)
-  --generate-ssh-key  Generate a new SSH keypair in payload (mutually exclusive with --ssh-key)
-  --prompt-all   Prompt for all .env keys interactively
-  --all-env      Set all .env keys at once (key=value pairs)
-  --github-pat   GitHub Personal Access Token (reminder only)
-  --slack-token  Slack Bot/User Token (reminder only)
-        """,
+    # create-session command
+    create_parser = subparsers.add_parser(
+        "create-session", help="Create a new agent session from a role template"
     )
-    p_create.add_argument("--name", type=str, help="Session name (e.g. pm-guardian)")
-    p_create.add_argument(
-        "--role", type=str, help="Role/template to use (e.g. python_coder)"
+    create_parser.add_argument("--name", help="Session name (e.g. pm-guardian)")
+    create_parser.add_argument("--role", help="Role/template to use")
+    create_parser.add_argument(
+        "--project", help="Project name to include project-specific docs"
     )
-    p_create.add_argument(
-        "--project", type=str, help="Project name to include project-specific docs"
+    create_parser.add_argument(
+        "--ssh-key", help="Path to SSH private key to copy into payload"
     )
-    p_create.add_argument(
-        "--ssh-key",
-        type=str,
-        help="Path to SSH private key to copy into payload (mutually exclusive with --generate-ssh-key)",
-    )
-    p_create.add_argument(
+    create_parser.add_argument(
         "--generate-ssh-key",
         action="store_true",
-        help="Generate a new SSH keypair in payload (mutually exclusive with --ssh-key)",
+        help="Generate a new SSH keypair in payload",
     )
-    p_create.add_argument(
+    create_parser.add_argument(
         "--prompt-all",
         action="store_true",
         help="Prompt for all .env keys interactively",
     )
-    p_create.add_argument(
+    create_parser.add_argument(
         "--all-env",
-        nargs="*",
+        nargs="+",
         help="Set all .env keys at once (key=value pairs)",
     )
-    p_create.add_argument(
-        "--github-pat", type=str, help="GitHub Personal Access Token (reminder only)"
+    create_parser.add_argument(
+        "--github-pat", help="GitHub Personal Access Token (reminder only)"
     )
-    p_create.add_argument(
-        "--slack-token", type=str, help="Slack Bot/User Token (reminder only)"
+    create_parser.add_argument(
+        "--slack-token", help="Slack Bot/User Token (reminder only)"
     )
-    p_create.set_defaults(func=create_session)
 
-    # prepare-payload
-    p_payload = subparsers.add_parser(
-        "prepare-payload", help="Prepare payload for a session"
-    )
-    p_payload.add_argument("--name", type=str, help="Session name")
-    p_payload.set_defaults(func=prepare_payload)
-
-    # list-roles
-    p_list = subparsers.add_parser("list-roles", help="List available roles/templates")
-    p_list.set_defaults(func=lambda args: list_roles())
-
-    # add-role
-    p_add = subparsers.add_parser("add-role", help="Add a new role/template")
-    p_add.add_argument("--name", type=str, help="Role/template name")
-    p_add.set_defaults(func=add_role)
+    # add-role command
+    add_role_parser = subparsers.add_parser("add-role", help="Add a new role template")
+    add_role_parser.add_argument("--name", help="Role name (e.g. python_coder)")
+    add_role_parser.add_argument("--docs", nargs="+", help="Paths to docs to include")
+    add_role_parser.add_argument("--env-sample", help="Path to .env.sample to include")
 
     args = parser.parse_args()
-    if getattr(args, "simple_help", False):
-        print_simple_help()
-        sys.exit(0)
+
     if not args.command:
-        parser.print_help()
-        sys.exit(0)
-    args.func(args)
+        print_simple_help()
+        sys.exit(1)
+
+    if args.command == "create-session":
+        create_session(args)
+    elif args.command == "add-role":
+        add_role(args)
+    else:
+        print(f"Unknown command: {args.command}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

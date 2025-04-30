@@ -1,34 +1,86 @@
 # AI Team Workspace
 
-This repository provides full scaffolding and automation for spinning up isolated, role-based AI agent sessions for projects, including:
-
-- Per-session workspaces with isolated code clones
-- Automated DevContainer setup and config sync
-- Templated secrets and MCP config injection
-- Clear separation of global, project, role, and per-session documentation
-- Secure handling of secrets and SSH keys
+This repository provides automation for creating isolated, role-based AI agent sessions.
 
 ## Quick Start
 
-1. **Clone this repo**
-2. **Install Python 3.7+** (no extra dependencies required)
-3. **Create a new session:**
+1. Clone this repo
+2. Install Python 3.7+
+3. Create a new session:
    ```bash
-   python team-cli/team_cli.py create-session --name my-coder --role python_coder --generate-ssh-key --prompt-all
-   # Or, to include project docs:
-   python team-cli/team_cli.py create-session --name my-coder --role python_coder --project sample_project --generate-ssh-key --prompt-all
+   # With interactive prompts for all values:
+   python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --prompt-all
+
+   # Or with all values specified:
+   python team-cli/team_cli.py create-session \
+     --name pm-guardian \
+     --role python_coder \
+     --ssh-key ~/.ssh/id_rsa \
+     --all-env \
+       GIT_USER_NAME="PM Guardian" \
+       GIT_USER_EMAIL="pm@example.com" \
+       GITHUB_PERSONAL_ACCESS_TOKEN="ghp_xxx" \
+       SLACK_BOT_TOKEN="xoxb-xxx" \
+       SLACK_TEAM_ID="Txxx" \
+       ANTHROPIC_API_KEY="sk-xxx" \
+       PERPLEXITY_API_KEY="pplx-xxx"
    ```
-   > **IMPORTANT:** You will be prompted for all required secrets, including `ANTHROPIC_API_KEY` and `PERPLEXITY_API_KEY` for Taskmaster MCP integration. If you skip these, you **must** fill them in later in the generated `.env` file before running or preparing the session.
-4. **Edit the generated `.env` and docs in your session folder as needed**
-5. **Prepare the payload:**
-   ```bash
-   python team-cli/team_cli.py prepare-payload --name my-coder
-   ```
-6. **Open the session folder in VS Code or Windsurf as a Dev Container**
-7. **Run the restore script inside the container:**
-   ```bash
-   bash /workspaces/project/payload/restore_payload.sh
-   ```
+
+4. Launch the container - the restore script will automatically:
+   - Set up SSH keys
+   - Configure environment variables
+   - Set up MCP configuration
+   - Copy global rules
+
+## Documentation Structure
+
+- `docs/global/` - Global docs for all agents/projects
+- `docs/projects/<project_name>/` - Per-project docs
+- `roles/<role>/docs/` - Per-role docs
+- `sessions/<agent>/docs/` - Per-session docs (copied from above)
+
+## Security
+
+- **IMPORTANT**: Do not commit real secrets or private keys to this repository
+- Store sensitive information securely:
+  - SSH keys in `sessions/<agent>/payload/.ssh/`
+  - Environment variables in `sessions/<agent>/payload/.env`
+  - MCP configuration in `sessions/<agent>/payload/mcp_config.json`
+- Generated session folders should not be committed to git
+
+## Key Scripts & Tools
+
+- `team-cli/team_cli.py` - Session management CLI
+  - Create new sessions from role templates
+  - Configure SSH keys and environment variables
+  - Set up documentation and payload
+- `.devcontainer/` - DevContainer setup and configuration
+  - `devcontainer.json` - Container configuration
+  - `Dockerfile` - Container image definition
+  - `scripts/` - Setup and utility scripts
+
+## Environment Variables
+
+Required environment variables (set in `payload/.env`):
+- `GITHUB_PERSONAL_ACCESS_TOKEN` - GitHub access token
+- `SLACK_BOT_TOKEN` - Slack bot user token
+- `SLACK_TEAM_ID` - Slack workspace ID
+- `GIT_USER_NAME` - Git commit author name
+- `GIT_USER_EMAIL` - Git commit author email
+- `GIT_SSH_KEY_PATH` - Path to SSH key in container
+- `ANTHROPIC_API_KEY` - Claude API key
+- `PERPLEXITY_API_KEY` - Perplexity AI key
+
+## Adding New Roles
+
+```bash
+python team-cli/team_cli.py add-role \
+  --name new-role \
+  --docs docs/role-specific/*.md \
+  --env-sample .env.role.example
+```
+
+See `roles/python_coder` for an example role template.
 
 ## Documentation Structure
 
@@ -36,31 +88,68 @@ This repository provides full scaffolding and automation for spinning up isolate
 - `docs/projects/<project_name>/` — Project-specific docs
 - `roles/<role>/docs/` — Role-specific docs
 - `sessions/<agent>/docs/` — Per-session docs (auto-populated from above, never tracked in git)
+- `tasks/` — Generated task files and documentation
+- `scripts/` — Utility scripts and PRD templates
 
 ## Security & Secret Storage
-- **Never commit real secrets or private keys to this repo.**
-- The `.gitignore` is configured to ignore all `.env` files, all `payload/.ssh/` directories, and all generated session folders.
-- SSH keys are generated or copied into `payload/.ssh/` and are never tracked by git.
-- **All generated session folders are ignored by git.**
-- **Store secrets and sensitive configs in a secure location outside git, such as iCloud, 1Password, or your organization's vault.**
-- When onboarding a new machine, restore secrets from your secure backup and use the CLI to generate new sessions.
-- **TIP:** If you ever forget to provide `ANTHROPIC_API_KEY` or `PERPLEXITY_API_KEY` during session creation, simply edit the `.env` file in your session folder and add them before launching or preparing the payload. These are required for Taskmaster MCP features to work.
+
+- **Never commit real secrets or private keys to this repo**
+- The `.gitignore` is configured to ignore:
+  - All `.env` files
+  - All `payload/.ssh/` directories
+  - All generated session folders
+  - Task Master temporary files
+- SSH keys are generated or copied into `payload/.ssh/` and are never tracked
+- **Store secrets and sensitive configs securely outside git** (iCloud, 1Password, etc.)
+- When onboarding a new machine, restore secrets from your secure backup
+- **TIP:** If you forget to provide API keys during session creation, add them to `.env` before launching
+
+## Task Master Integration
+
+Task Master provides AI-driven task management through the Model Control Protocol (MCP):
+
+- **Initialize a project:**
+  ```bash
+  task-master init -y
+  ```
+
+- **Generate tasks from PRD:**
+  ```bash
+  task-master parse-prd scripts/prd.txt
+  ```
+
+- **Common commands:**
+  ```bash
+  task-master list              # List all tasks
+  task-master next             # Show next available task
+  task-master expand --id=<id> # Break down a task
+  task-master show <id>        # View task details
+  ```
+
+See [README-task-master.md](README-task-master.md) for detailed Task Master documentation.
 
 ## Key Scripts & CLI
-- `team-cli/team_cli.py` — Main CLI for session and agent management. Run with `--help` or `--simple-help` for usage.
-- `sync-devcontainer.sh` — Copies the root `.devcontainer/` into each session folder
-- `.devcontainer/scripts/setup_workspace.sh` — Clones the main repo into the session workspace
-- `.devcontainer/scripts/refresh_configs.sh` — Renders MCP config and injects session secrets
+
+- `team-cli/team_cli.py` — Main CLI for session and agent management
+  ```bash
+  python team-cli/team_cli.py --help        # Full help
+  python team-cli/team_cli.py --simple-help # Quick reference
+  ```
+- `sync-devcontainer.sh` — Copies the root `.devcontainer/` into each session
+- `.devcontainer/scripts/setup_workspace.sh` — Clones main repo into session
+- `.devcontainer/scripts/refresh_configs.sh` — Renders MCP config and injects secrets
 
 ## Contributing
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details on DevContainer sync and best practices.
 
 ---
 
 **WARNING:**
-- Never commit generated session folders or secrets to git.
-- Always use secure storage for secrets (iCloud, 1Password, etc.).
-- For more details, run:
-```bash
-python team-cli/team_cli.py --simple-help
-``` 
+- Never commit generated session folders or secrets to git
+- Always use secure storage for secrets (iCloud, 1Password, etc.)
+- Keep your API keys secure and never share them
+- For quick help:
+  ```bash
+  python team-cli/team_cli.py --simple-help
+  ``` 

@@ -10,26 +10,32 @@
 - Sets and maintains project technical standards
 - Coordinates cross-team technical decisions
 
-### PM Guardian
+### PM Guardian (ledgerflow-pm)
 - Owns project roadmap and milestone tracking
 - Manages task prioritization and dependencies
 - Ensures documentation stays current
 - Coordinates between team members
 - Reviews and approves major architectural decisions
+- Enforces backup/wrapper rules
+- Owns CI & prod roll-outs
 
-### DB Guardian
+### DB Guardian (ledgerflow-db)
 - Owns database schema design and evolution
 - Manages backup and restore procedures
 - Monitors database performance
 - Implements data migration strategies
 - Reviews DB-related code changes
+- Maintains Postgres schema & fixtures
+- Handles backup/restore scripts and tuning
 
-### Full-Stack Developer
+### Full-Stack Developer (ledgerflow-dev)
 - Implements backend APIs and services
 - Builds frontend components and features
 - Ensures code quality and test coverage
 - Participates in code reviews
 - Helps maintain development environment
+- Implements Django API and React/Tailwind UI
+- Handles glue code for parsers/classifier
 
 ### UI Specialist
 - Designs and implements user interface
@@ -45,12 +51,19 @@
 - Reviews Python-related PRs
 - Helps maintain code standards
 
-### Reviewer
+### Reviewer (ledgerflow-review)
 - Performs thorough code reviews
 - Ensures adherence to standards
 - Validates test coverage
 - Checks documentation updates
 - Verifies CI/CD pipeline health
+- Maintains velocity without sacrificing quality
+
+### Taskforce (ledgerflow-taskforce)
+- Handles specialist tasks (PDF/NLP/Reporting)
+- Spins up only when needed for complex features
+- Provides temporary focused expertise
+- Integrates with core team as needed
 
 ## Communication Channels
 
@@ -123,17 +136,16 @@
 
 | Slack Handle | Windsurf Session | Role | TZ / Typical Hours |
 |--------------|------------------|------|--------------------|
-| @greg | **tech-director** | Technical Director & Systems Architect | PST (flexible) |
-| @ledgerflow-guardian | **pm-guardian** | Release captain, safety gate | PST (08-16) |
-| @ledgerflow-dev | **full-stack-dev** | Django + React implementation | EST (09-17) |
-| @ledgerflow-db | **db-guardian** | PostgreSQL, backups, migrations | PST (10-18) |
-| @ledgerflow-review | **reviewer** | PR audit & CI enforcement | CET (async) |
-| @ledgerflow-task | **task-force** | Short-lived spikes / experiments | rotates |
+| @ledgerflow-pm | **ledgerflow-pm** | PM Guardian | PST (08-16) |
+| @ledgerflow-dev | **ledgerflow-dev** | Full-Stack Developer | EST (09-17) |
+| @ledgerflow-db | **ledgerflow-db** | DB Guardian | PST (10-18) |
+| @ledgerflow-review | **ledgerflow-review** | PR audit & CI enforcement | CET (async) |
+| @ledgerflow-taskforce | **ledgerflow-taskforce** | Specialist spikes | rotates |
 
 ## Escalation
 
-1. **Prod down / data-loss risk** → page **@ledgerflow-guardian**  
-2. **DB corruption / backup failure** → **@ledgerflow-db**  
+1. **Prod down / data-loss risk** → page **@ledgerflow-pm**
+2. **DB corruption / backup failure** → **@ledgerflow-db**
 3. **CI red on `main`** → **@ledgerflow-review** + #ledgerflow-ops
 
 ## Communication Channels
