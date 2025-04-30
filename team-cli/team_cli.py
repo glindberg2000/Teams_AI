@@ -97,31 +97,55 @@ def create_session(args):
 
     # --- Project and Docs Handling ---
     docs_included = []
-    session_docs = session_path / "docs"
-    session_docs.mkdir(exist_ok=True)
-    # Copy global docs
-    global_docs_dir = Path("docs/global")
-    if global_docs_dir.exists():
-        for f in global_docs_dir.glob("*.md"):
-            shutil.copy(f, session_docs)
-            docs_included.append(f"global/{f.name}")
-    # Copy project docs if --project is set
+    payload_docs = session_path / "payload/docs"
+    payload_docs.mkdir(parents=True, exist_ok=True)
+
+    # Copy global docs if enabled
+    include_global = getattr(
+        args, "include_global_docs", True
+    )  # Default to True for backward compatibility
+    if include_global:
+        global_docs_dir = Path("docs/global")
+        if global_docs_dir.exists():
+            for f in global_docs_dir.glob("**/*"):
+                if f.is_file():
+                    relative_path = f.relative_to(global_docs_dir)
+                    target_path = payload_docs / "global" / relative_path
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(f, target_path)
+                    docs_included.append(f"global/{relative_path}")
+
+    # Copy project docs if --project is set and enabled
     if hasattr(args, "project") and args.project:
         project_docs_dir = Path(f"docs/projects/{args.project}")
         if project_docs_dir.exists():
-            for f in project_docs_dir.glob("*.md"):
-                shutil.copy(f, session_docs)
-                docs_included.append(f"projects/{args.project}/{f.name}")
+            for f in project_docs_dir.glob("**/*"):
+                if f.is_file():
+                    relative_path = f.relative_to(project_docs_dir)
+                    target_path = payload_docs / "project" / relative_path
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(f, target_path)
+                    docs_included.append(f"project/{relative_path}")
         else:
             print(f"[WARNING] Project docs not found: {project_docs_dir}")
-    # Copy role docs
-    role_docs_dir = role_path / "docs"
-    if role_docs_dir.exists():
-        for f in role_docs_dir.glob("*.md"):
-            shutil.copy(f, session_docs)
-            docs_included.append(f"role/{role}/{f.name}")
+
+    # Copy role docs if enabled
+    include_role = getattr(
+        args, "include_role_docs", True
+    )  # Default to True for backward compatibility
+    if include_role:
+        role_docs_dir = role_path / "docs"
+        if role_docs_dir.exists():
+            for f in role_docs_dir.glob("**/*"):
+                if f.is_file():
+                    relative_path = f.relative_to(role_docs_dir)
+                    target_path = payload_docs / "role" / relative_path
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(f, target_path)
+                    docs_included.append(f"role/{relative_path}")
+
     print(
-        f"Included docs in session: {', '.join(docs_included) if docs_included else 'none'}"
+        f"Included docs in session payload: {', '.join(docs_included) if docs_included else 'none'}"
     )
 
     # --- SSH Key Handling ---
@@ -495,14 +519,23 @@ def create_crew(args):
                 key, value = line.split("=", 1)
                 team_env[key.strip()] = value.strip()
 
-    # Extract project info
+    # Extract project info and docs config
     project_name = team_env.get("PROJECT_NAME", "default")
     repo_url = team_env.get("REPO_URL", "")
+    include_global_docs = team_env.get("INCLUDE_GLOBAL_DOCS", "true").lower() == "true"
+    include_project_docs = (
+        team_env.get("INCLUDE_PROJECT_DOCS", "true").lower() == "true"
+    )
+    include_role_docs = team_env.get("INCLUDE_ROLE_DOCS", "true").lower() == "true"
 
     # Create project directory
     project_dir = SESSIONS_DIR / project_name
     project_dir.mkdir(parents=True, exist_ok=True)
     print(f"\nCreating sessions for project: {project_name}")
+    print(f"Documentation settings:")
+    print(f"- Include global docs: {include_global_docs}")
+    print(f"- Include project docs: {include_project_docs}")
+    print(f"- Include role docs: {include_role_docs}")
 
     # Shared tokens
     shared_tokens = {
@@ -555,7 +588,9 @@ def create_crew(args):
             role=role,
             generate_ssh_key=True,
             ssh_key=None,
-            project=project_name,
+            project=project_name if include_project_docs else None,
+            include_global_docs=include_global_docs,
+            include_role_docs=include_role_docs,
             prompt_all=False,
             all_env=[
                 f"GIT_USER_NAME={session_name}",
@@ -614,6 +649,18 @@ def main():
     )
     create_parser.add_argument(
         "--all-env", nargs="+", help="Set all env values at once (key=value pairs)"
+    )
+    create_parser.add_argument(
+        "--no-global-docs",
+        action="store_false",
+        dest="include_global_docs",
+        help="Skip including global documentation",
+    )
+    create_parser.add_argument(
+        "--no-role-docs",
+        action="store_false",
+        dest="include_role_docs",
+        help="Skip including role-specific documentation",
     )
 
     # Create Crew Command

@@ -19,7 +19,13 @@ if [ -f "/workspaces/project/payload/mcp_config.json" ]; then
   cp /workspaces/project/payload/mcp_config.json /root/.codeium/windsurf/mcp_config.json
 fi
 
-# Move global rules if they exist
+# Move docs directory if it exists
+if [ -d "/workspaces/project/payload/docs" ]; then
+  mkdir -p /workspaces/project/docs
+  cp -r /workspaces/project/payload/docs/* /workspaces/project/docs/
+fi
+
+# Move global rules if they exist (legacy support)
 if [ -f "/workspaces/project/payload/global_rules.md" ]; then
   cp /workspaces/project/payload/global_rules.md /workspaces/project/docs/global_rules.md
 fi

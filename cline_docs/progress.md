@@ -6,15 +6,20 @@
 - Added proper API key propagation (ANTHROPIC_API_KEY and PERPLEXITY_API_KEY) from team env to individual sessions
 - Verified unique SSH key generation for each session in crew creation
 - Added proper environment variable handling and documentation
+- Implemented configurable documentation handling in payload directory
+- Updated restore_payload.sh to properly restore docs
+- Added documentation configuration options in team env file
 
 ## In Progress
-- Improving documentation and user feedback
-- Testing additional session configurations
+- Testing documentation handling with different configurations
+- Verifying documentation restoration in containers
 
 ## To Do
 - Consider adding custom SSH key naming scheme for better visibility
 - Add validation for API key formats
 - Consider adding key rotation capabilities
+- Add documentation validation to ensure required docs exist
+- Consider adding documentation templates for new projects
 
 # Progress Status
 
