@@ -1,42 +1,26 @@
-# Current Task Context
+# Active Context
 
-## Active Task
-Cleaning up documentation and implementing team session creation functionality.
+## Current Work
+- Verified and improved team-cli functionality:
+  - Confirmed unique SSH key generation for each session in crew creation
+  - Fixed API key propagation from team env to individual sessions
+  - Improved environment variable handling
+  - Added proper SLACK_TEAM_ID synchronization
 
 ## Recent Changes
-1. Documentation Updates
-   - Updated team_cli.py docstrings with clearer usage instructions
-   - Standardized naming conventions in team_overview.md
-   - Created comprehensive project_overview.md
-   - Set up Slack channel guidelines
-
-2. Configuration Management
-   - Analyzed refresh_configs.sh for MCP configuration generation
-   - Identified missing restore_payload.sh script
-   - Documented DevContainer setup process
-
-3. Memory Bank Updates
-   - Updated productContext.md with current system architecture
-   - Created this activeContext.md file
-   - Preparing for team session implementation
+- Added ANTHROPIC_API_KEY and PERPLEXITY_API_KEY to team env template
+- Verified SSH key generation uniqueness across sessions
+- Improved project-based organization for sessions
+- Enhanced environment variable propagation
 
 ## Next Steps
-1. Team Session Creation
-   - Review team environment variables
-   - Implement session creation for multiple agents
-   - Test documentation inheritance
-   - Verify MCP configuration
+1. Consider implementing custom SSH key naming for better visibility
+2. Add API key format validation
+3. Consider implementing key rotation capabilities
+4. Continue testing with different session configurations
 
-2. Documentation Finalization
-   - Commit documentation changes
-   - Update README files
-   - Verify documentation hierarchy
-
-3. Testing & Validation
-   - Test team session creation
-   - Verify environment configuration
-   - Check documentation distribution
-   - Validate MCP setup
-
-## Current Focus
-Implementing and testing team-wide session creation while ensuring all documentation accurately reflects the current system state. 
+## Current State
+- All core functionality is working as expected
+- Environment variable handling is robust
+- SSH key generation is unique per session
+- Project-based organization is implemented 

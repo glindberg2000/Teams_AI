@@ -34,9 +34,14 @@ import os
 import shutil
 import sys
 from pathlib import Path
+import yaml
+import json
+from typing import Dict, Any
 
 SESSIONS_DIR = Path("sessions")
 ROLES_DIR = Path("roles")
+TEAM_CONFIG = Path("team/crew.yaml")
+TEAM_ENV = Path(".env.team")
 
 
 # --- Utility Functions ---
@@ -70,17 +75,25 @@ def create_session(args):
     name = args.name or input("Session name (e.g. pm-guardian): ").strip()
     list_roles()
     role = args.role or input("Role/template to use: ").strip()
+    project = args.project or "default"
+
     role_path = ROLES_DIR / role
     if not role_path.exists():
         print(f"Role '{role}' not found in {ROLES_DIR}.")
         sys.exit(1)
-    session_path = SESSIONS_DIR / name
+
+    # Create project-based session directory
+    project_sessions_dir = SESSIONS_DIR / project
+    project_sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    session_path = project_sessions_dir / name
     if session_path.exists():
         print(f"Session '{name}' already exists at {session_path}.")
         sys.exit(1)
+
     # Copy role template to new session
     shutil.copytree(role_path, session_path)
-    print(f"Created session '{name}' from role '{role}'.")
+    print(f"Created session '{name}' from role '{role}' in project '{project}'.")
 
     # --- Project and Docs Handling ---
     docs_included = []
@@ -394,52 +407,226 @@ For more options, run:
     )
 
 
+def load_crew_config(config_path: Path = None) -> Dict[str, Any]:
+    """Load and validate the crew configuration.
+
+    Args:
+        config_path: Optional path to crew config. Defaults to team/crew.yaml
+    """
+    config_file = config_path or TEAM_CONFIG
+
+    if not config_file.exists():
+        print(f"Error: Crew configuration not found at {config_file}")
+        sys.exit(1)
+
+    try:
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        print(f"Error parsing crew configuration: {e}")
+        sys.exit(1)
+
+    if not isinstance(config, dict) or "crew" not in config:
+        print(f"Error: Invalid crew configuration format in {config_file}")
+        print("Expected format: {'crew': {...}}")
+        sys.exit(1)
+
+    # Validate crew member configs
+    required_fields = ["role", "bot_id", "container", "slack_handle", "email"]
+    for member_id, member in config["crew"].items():
+        missing = [f for f in required_fields if f not in member]
+        if missing:
+            print(
+                f"Error: Member '{member_id}' missing required fields: {', '.join(missing)}"
+            )
+            sys.exit(1)
+
+    return config
+
+
+def load_team_env(env_path: Path = None) -> Dict[str, str]:
+    """Load the team environment variables.
+
+    Args:
+        env_path: Optional path to team env file. Defaults to .env.team
+    """
+    env_file = env_path or TEAM_ENV
+
+    if not env_file.exists():
+        print(f"Error: Team environment file not found at {env_file}")
+        print("Copy .env.team.example to .env.team and fill in values.")
+        sys.exit(1)
+
+    env_vars = {}
+    try:
+        with open(env_file) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    env_vars[k.strip()] = v.strip()
+    except Exception as e:
+        print(f"Error reading team environment file: {e}")
+        sys.exit(1)
+
+    # Validate required env vars
+    required_vars = ["LEDGERFLOW_EMAIL_PREFIX", "SLACK_BOT_TOKEN", "SLACK_TEAM_ID"]
+    missing = [v for v in required_vars if not env_vars.get(v)]
+    if missing:
+        print(f"Error: Missing required environment variables: {', '.join(missing)}")
+        sys.exit(1)
+
+    return env_vars
+
+
+def create_crew(args):
+    """Create multiple sessions based on a team environment file."""
+    env_file = Path(args.env_file) if args.env_file else TEAM_ENV
+    if not env_file.exists():
+        print(f"Error: Team environment file not found at {env_file}")
+        sys.exit(1)
+
+    # Load team environment
+    team_env = {}
+    with open(env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                team_env[key.strip()] = value.strip()
+
+    # Extract project info
+    project_name = team_env.get("PROJECT_NAME", "default")
+    repo_url = team_env.get("REPO_URL", "")
+
+    # Create project directory
+    project_dir = SESSIONS_DIR / project_name
+    project_dir.mkdir(parents=True, exist_ok=True)
+    print(f"\nCreating sessions for project: {project_name}")
+
+    # Shared tokens
+    shared_tokens = {
+        "SLACK_WORKSPACE_ID": team_env.get("SLACK_WORKSPACE_ID", ""),
+        "GITHUB_ORG": team_env.get("GITHUB_ORG", ""),
+        "GITHUB_REPO": team_env.get("GITHUB_REPO", ""),
+    }
+
+    # Group environment variables by session
+    sessions = {}
+    for key, value in team_env.items():
+        # Skip shared/project config
+        if key in ["PROJECT_NAME", "REPO_URL"] or key in shared_tokens:
+            continue
+
+        # Parse session name from key (e.g., PM_GUARDIAN_EMAIL -> pm_guardian)
+        parts = key.lower().split("_")
+        if len(parts) < 2:
+            continue
+
+        # Extract session name and variable
+        if key.endswith("_EMAIL"):
+            session_name = "_".join(parts[:-1])
+            sessions.setdefault(session_name, {})["email"] = value
+        elif key.endswith("_SLACK_TOKEN"):
+            session_name = "_".join(parts[:-2])
+            sessions.setdefault(session_name, {})["slack_token"] = value
+        elif key.endswith("_GITHUB_TOKEN"):
+            session_name = "_".join(parts[:-2])
+            sessions.setdefault(session_name, {})["github_token"] = value
+
+    # Create each session
+    for session_name, config in sessions.items():
+        print(f"\nCreating session: {session_name}")
+
+        # Map session names to roles (you may want to make this configurable)
+        role_mapping = {
+            "pm_guardian": "pm_guardian",
+            "full_stack_dev": "python_coder",
+            "db_guardian": "python_coder",
+            "reviewer": "python_coder",
+            "taskforce": "python_coder",
+        }
+
+        role = role_mapping.get(session_name, "python_coder")
+
+        # Prepare session arguments
+        session_args = argparse.Namespace(
+            name=session_name,
+            role=role,
+            generate_ssh_key=True,
+            ssh_key=None,
+            project=project_name,
+            prompt_all=False,
+            all_env=[
+                f"GIT_USER_NAME={session_name}",
+                f"GIT_USER_EMAIL={config['email']}",
+                f"SLACK_BOT_TOKEN={config['slack_token']}",
+                f"GITHUB_PERSONAL_ACCESS_TOKEN={config['github_token']}",
+                f"SLACK_WORKSPACE_ID={shared_tokens['SLACK_WORKSPACE_ID']}",
+                f"SLACK_TEAM_ID={shared_tokens['SLACK_WORKSPACE_ID']}",  # Add SLACK_TEAM_ID
+                # Add base configuration with actual values from team env
+                f"ANTHROPIC_API_KEY={team_env.get('ANTHROPIC_API_KEY', '')}",
+                f"PERPLEXITY_API_KEY={team_env.get('PERPLEXITY_API_KEY', '')}",
+                "MODEL=claude-3-sonnet-20240229",
+                "PERPLEXITY_MODEL=sonar-medium-online",
+                "MAX_TOKENS=64000",
+                "TEMPERATURE=0.2",
+                "DEBUG=false",
+                "LOG_LEVEL=info",
+                "DEFAULT_SUBTASKS=5",
+                "DEFAULT_PRIORITY=medium",
+            ],
+        )
+
+        try:
+            create_session(session_args)
+            print(f"Successfully created session: {session_name}")
+        except Exception as e:
+            print(f"Error creating session {session_name}: {str(e)}")
+            continue
+
+    print(f"\nTeam creation complete! All sessions created in {project_dir}")
+    print("\nAction Required:")
+    print("1. Set ANTHROPIC_API_KEY in each session's .env file")
+    print("2. Set PERPLEXITY_API_KEY in each session's .env file (optional)")
+    print_reminders()
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="LedgerFlow AI Team session management CLI",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="LedgerFlow AI Team CLI", usage="%(prog)s <command> [options]"
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    # create-session command
+    # Create Session Command
     create_parser = subparsers.add_parser(
-        "create-session", help="Create a new agent session from a role template"
+        "create-session", help="Create a new agent session"
     )
-    create_parser.add_argument("--name", help="Session name (e.g. pm-guardian)")
+    create_parser.add_argument("--name", help="Session name")
     create_parser.add_argument("--role", help="Role/template to use")
+    create_parser.add_argument("--project", help="Project name for docs")
+    create_parser.add_argument("--ssh-key", help="Path to existing SSH key to use")
     create_parser.add_argument(
-        "--project", help="Project name to include project-specific docs"
+        "--generate-ssh-key", action="store_true", help="Generate new SSH key"
     )
     create_parser.add_argument(
-        "--ssh-key", help="Path to SSH private key to copy into payload"
+        "--prompt-all", action="store_true", help="Prompt for all env values"
     )
     create_parser.add_argument(
-        "--generate-ssh-key",
-        action="store_true",
-        help="Generate a new SSH keypair in payload",
-    )
-    create_parser.add_argument(
-        "--prompt-all",
-        action="store_true",
-        help="Prompt for all .env keys interactively",
-    )
-    create_parser.add_argument(
-        "--all-env",
-        nargs="+",
-        help="Set all .env keys at once (key=value pairs)",
-    )
-    create_parser.add_argument(
-        "--github-pat", help="GitHub Personal Access Token (reminder only)"
-    )
-    create_parser.add_argument(
-        "--slack-token", help="Slack Bot/User Token (reminder only)"
+        "--all-env", nargs="+", help="Set all env values at once (key=value pairs)"
     )
 
-    # add-role command
+    # Create Crew Command
+    crew_parser = subparsers.add_parser(
+        "create-crew", help="Create multiple sessions from team config"
+    )
+    crew_parser.add_argument("--env-file", help="Path to team environment file")
+    crew_parser.add_argument("--template", help="Path to team template YAML file")
+
+    # Add Role Command
     add_role_parser = subparsers.add_parser("add-role", help="Add a new role template")
-    add_role_parser.add_argument("--name", help="Role name (e.g. python_coder)")
-    add_role_parser.add_argument("--docs", nargs="+", help="Paths to docs to include")
-    add_role_parser.add_argument("--env-sample", help="Path to .env.sample to include")
+    add_role_parser.add_argument("name", help="Name of the new role")
+    add_role_parser.add_argument("--copy-from", help="Existing role to copy from")
 
     args = parser.parse_args()
 
@@ -451,8 +638,11 @@ def main():
         create_session(args)
     elif args.command == "add-role":
         add_role(args)
+    elif args.command == "create-crew":
+        create_crew(args)
     else:
         print(f"Unknown command: {args.command}")
+        print_simple_help()
         sys.exit(1)
 
 
