@@ -6,6 +6,7 @@ __pycache__/
 
 # Environment and secrets
 .env
+.env.team.*
 sessions/*/.env
 sessions/_shared/env.sample
 sessions/*/payload/.ssh/
