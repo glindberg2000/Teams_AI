@@ -13,6 +13,7 @@ Key Features:
 - Configures environment variables and MCP servers
 - Manages documentation inheritance (global -> project -> role -> session)
 - Generates restore scripts for container setup
+- Sets up devcontainer configuration for VSCode/Cursor
 
 Required Environment Variables:
 - GIT_USER_NAME, GIT_USER_EMAIL: Git configuration
@@ -42,6 +43,7 @@ SESSIONS_DIR = Path("sessions")
 ROLES_DIR = Path("roles")
 TEAM_CONFIG = Path("team/crew.yaml")
 TEAM_ENV = Path(".env.team")
+DEVCONTAINER_DIR = Path(".devcontainer")
 
 
 # --- Utility Functions ---
@@ -71,6 +73,100 @@ def list_roles():
             print(f"- {role.name}")
 
 
+def setup_devcontainer(session_path: Path, project: str, name: str):
+    """Set up devcontainer configuration for a session."""
+    if not DEVCONTAINER_DIR.exists():
+        print("[WARNING] No .devcontainer directory found in project root.")
+        return
+
+    # Copy devcontainer files
+    session_devcontainer = session_path / ".devcontainer"
+    shutil.copytree(DEVCONTAINER_DIR, session_devcontainer, dirs_exist_ok=True)
+
+    # Update devcontainer.json with session-specific name
+    devcontainer_json = session_devcontainer / "devcontainer.json"
+    if devcontainer_json.exists():
+        with open(devcontainer_json, "r") as f:
+            config = json.load(f)
+
+        # Update container name
+        config["name"] = f"{project}-{name}"
+
+        # Update runArgs to use unique container name
+        if "runArgs" in config:
+            for i, arg in enumerate(config["runArgs"]):
+                if arg == "--name":
+                    config["runArgs"][i + 1] = f"windsurf-{project}-{name}"
+                    break
+
+        # Fix mount path to use payload directory
+        if "mounts" in config:
+            for i, mount in enumerate(config["mounts"]):
+                if "source=${localWorkspaceFolder}" in mount:
+                    config["mounts"][i] = mount.replace(
+                        "source=${localWorkspaceFolder}/workspace",
+                        "source=${localWorkspaceFolder}/payload",
+                    )
+
+        with open(devcontainer_json, "w") as f:
+            json.dump(config, f, indent=4)
+
+        print(f"Set up devcontainer configuration in {session_devcontainer}")
+
+    # Update Dockerfile to use simpler configuration
+    dockerfile = session_devcontainer / "Dockerfile"
+    if dockerfile.exists():
+        dockerfile_content = """FROM node:20-bullseye
+
+# system deps + jq
+RUN apt-get update && \\
+    apt-get install -y wget curl ca-certificates tar gzip git docker.io jq && \\
+    rm -rf /var/lib/apt/lists/*
+
+# Set up workspace
+WORKDIR /workspaces/project
+
+# Keep container running
+CMD ["sleep", "infinity"]"""
+
+        with open(dockerfile, "w") as f:
+            f.write(dockerfile_content)
+
+        print(f"Updated Dockerfile in {session_devcontainer}")
+
+    # Ensure scripts directory exists
+    scripts_dir = session_devcontainer / "scripts"
+    scripts_dir.mkdir(exist_ok=True)
+
+    # Create setup_workspace.sh
+    setup_workspace = scripts_dir / "setup_workspace.sh"
+    setup_workspace_content = """#!/bin/bash
+set -e
+
+# Run restore script if it exists
+if [ -f "/workspaces/project/restore_payload.sh" ]; then
+    echo "Running restore script..."
+    bash /workspaces/project/restore_payload.sh
+fi
+"""
+    with open(setup_workspace, "w") as f:
+        f.write(setup_workspace_content)
+    os.chmod(setup_workspace, 0o755)
+
+    # Create refresh_configs.sh
+    refresh_configs = scripts_dir / "refresh_configs.sh"
+    refresh_configs_content = """#!/bin/bash
+set -e
+
+# Nothing to do here - configs are handled by restore script
+"""
+    with open(refresh_configs, "w") as f:
+        f.write(refresh_configs_content)
+    os.chmod(refresh_configs, 0o755)
+
+    print(f"Created devcontainer scripts in {scripts_dir}")
+
+
 def create_session(args):
     name = args.name or input("Session name (e.g. pm-guardian): ").strip()
     list_roles()
@@ -94,6 +190,9 @@ def create_session(args):
     # Copy role template to new session
     shutil.copytree(role_path, session_path)
     print(f"Created session '{name}' from role '{role}' in project '{project}'.")
+
+    # Set up devcontainer configuration
+    setup_devcontainer(session_path, project, name)
 
     # --- Project and Docs Handling ---
     docs_included = []
@@ -188,45 +287,58 @@ def create_session(args):
     # --- .env Handling: always generate from .env.sample ---
     env_sample_path = session_path / ".env.sample"
     env_path = session_path / "payload/.env"  # Changed to write directly to payload
-    env_vars = {}
+
+    # Initialize with default values for Task Master
+    env_vars = {
+        "MODEL": "claude-3-sonnet-20240229",
+        "PERPLEXITY_MODEL": "sonar-medium-online",
+        "MAX_TOKENS": "64000",
+        "TEMPERATURE": "0.2",
+        "DEFAULT_SUBTASKS": "5",
+        "DEFAULT_PRIORITY": "medium",
+        "DEBUG": "false",
+        "LOG_LEVEL": "info",
+    }
+
+    # First load template values
     if env_sample_path.exists():
         with open(env_sample_path, "r") as f:
             for line in f:
                 if line.strip() and not line.strip().startswith("#") and "=" in line:
                     k, v = line.strip().split("=", 1)
-                    env_vars[k] = v
-    # Allow --all-env flag to set all env keys at once (as key=value pairs)
+                    env_vars[k] = v.strip()  # Strip whitespace from values
+
+    # Then overlay any values from --all-env
     if hasattr(args, "all_env") and args.all_env:
         for kv in args.all_env:
             if "=" in kv:
                 k, v = kv.split("=", 1)
-                env_vars[k] = v
-    # Prompt for all env keys if --prompt-all is set
-    if hasattr(args, "prompt_all") and args.prompt_all:
-        for k in env_vars:
-            # Skip GITHUB_PAT if present (legacy, not used)
-            if k == "GITHUB_PAT":
-                continue
-            if k == "GIT_SSH_KEY_PATH":
-                val = input(
-                    f"Enter value for {k} (leave blank to use the generated key at /root/.ssh/id_rsa): "
-                )
-                if not val and updated_env:
-                    env_vars[k] = "/root/.ssh/id_rsa"
-                elif val:
-                    env_vars[k] = val
-            else:
-                val = input(f"Enter value for {k} (leave blank to keep current): ")
-                if val:
-                    env_vars[k] = val
-    # Always set GIT_SSH_KEY_PATH if we handled a key
-    if updated_env:
-        env_vars["GIT_SSH_KEY_PATH"] = "/root/.ssh/id_rsa"
-    # Write .env to payload
+                env_vars[k] = v.strip()
+
+    # Write the .env file with consistent formatting
+    os.makedirs(os.path.dirname(env_path), exist_ok=True)
     with open(env_path, "w") as f:
+        # Write Task Master variables first
+        task_master_vars = [
+            "ANTHROPIC_API_KEY",
+            "MODEL",
+            "PERPLEXITY_API_KEY",
+            "PERPLEXITY_MODEL",
+            "MAX_TOKENS",
+            "TEMPERATURE",
+            "DEFAULT_SUBTASKS",
+            "DEFAULT_PRIORITY",
+            "DEBUG",
+            "LOG_LEVEL",
+        ]
+        for k in task_master_vars:
+            if k in env_vars:
+                f.write(f"{k}={env_vars[k]}\n")
+
+        # Write remaining variables
         for k, v in env_vars.items():
-            f.write(f"{k}={v}\n")
-    print(f"Generated {env_path} with all crucial variables.")
+            if k not in task_master_vars:
+                f.write(f"{k}={v}\n")
 
     # --- Generate MCP config ---
     import json
@@ -239,17 +351,20 @@ def create_session(args):
         with open(template_path) as f:
             template = f.read()
 
-        # Replace all ${VAR} with values from env_vars
+        # Replace all ${VAR} with values from env_vars, preserving structure
         def replace_var(match):
             var_name = match.group(1)
-            return env_vars.get(var_name, "")
+            return env_vars.get(var_name, "")  # Return empty string for missing vars
 
         config_str = re.sub(r"\${([^}]+)}", replace_var, template)
-        mcp_config = json.loads(config_str)
+
+        try:
+            mcp_config = json.loads(config_str)
+        except json.JSONDecodeError as e:
+            print(f"Error parsing MCP config template: {e}")
+            mcp_config = {}
     else:
-        print(
-            f"[INFO] No custom MCP config found for role '{role_path}'. Using default MCP config."
-        )
+        # Generate default MCP config
         mcp_config = {
             "mcpServers": {
                 "puppeteer": {
@@ -278,11 +393,28 @@ def create_session(args):
                     "command": "npx",
                     "args": ["-y", "@upstash/context7-mcp@latest"],
                 },
+                "taskmaster-ai": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-taskmaster"],
+                    "env": {
+                        "ANTHROPIC_API_KEY": env_vars.get("ANTHROPIC_API_KEY", ""),
+                        "PERPLEXITY_API_KEY": env_vars.get("PERPLEXITY_API_KEY", ""),
+                        "MODEL": env_vars.get("MODEL", ""),
+                        "PERPLEXITY_MODEL": env_vars.get("PERPLEXITY_MODEL", ""),
+                        "MAX_TOKENS": env_vars.get("MAX_TOKENS", ""),
+                        "TEMPERATURE": env_vars.get("TEMPERATURE", ""),
+                        "DEFAULT_SUBTASKS": env_vars.get("DEFAULT_SUBTASKS", ""),
+                        "DEFAULT_PRIORITY": env_vars.get("DEFAULT_PRIORITY", ""),
+                        "DEBUG": env_vars.get("DEBUG", ""),
+                        "LOG_LEVEL": env_vars.get("LOG_LEVEL", ""),
+                    },
+                },
             }
         }
 
-    # Write to payload
+    # Write the MCP config
     mcp_config_path = session_path / "payload/mcp_config.json"
+    os.makedirs(os.path.dirname(mcp_config_path), exist_ok=True)
     with open(mcp_config_path, "w") as f:
         json.dump(mcp_config, f, indent=4)
     print(f"Generated {mcp_config_path}")
@@ -336,54 +468,6 @@ def create_session(args):
     if not ssh_ignored:
         print(
             "[SECURITY WARNING] .ssh directory is not in .gitignore! Add 'payload/.ssh/' to your .gitignore to prevent accidental commits of private keys."
-        )
-
-    # --- DevContainer Setup ---
-    devcontainer_dir = Path(".devcontainer")
-    session_root_dir = session_path  # sessions/<project>/<session>
-    devcontainer_session_dir = session_root_dir / ".devcontainer"
-    devcontainer_session_dir.mkdir(parents=True, exist_ok=True)
-    # Copy Dockerfile
-    dockerfile_src = devcontainer_dir / "Dockerfile"
-    dockerfile_dst = devcontainer_session_dir / "Dockerfile"
-    if dockerfile_src.exists():
-        shutil.copyfile(dockerfile_src, dockerfile_dst)
-        print(f"Copied Dockerfile to {dockerfile_dst}")
-    else:
-        print(f"[WARNING] Dockerfile template not found at {dockerfile_src}")
-    # Copy and patch devcontainer.json
-    devcontainer_json_src = devcontainer_dir / "devcontainer.json"
-    devcontainer_json_dst = devcontainer_session_dir / "devcontainer.json"
-    if devcontainer_json_src.exists():
-        with open(devcontainer_json_src) as f:
-            devcontainer = json.load(f)
-        # Patch name and repo URL
-        patched = False
-        if "name" in devcontainer:
-            devcontainer["name"] = (
-                f"{project}-{name}"
-                if project and name
-                else name or project or "session"
-            )
-            patched = True
-        if (
-            "remoteEnv" in devcontainer
-            and "LEDGERFLOW_REPO_URL" in devcontainer["remoteEnv"]
-        ):
-            repo_url = env_vars.get("REPO_URL", "")
-            if not repo_url:
-                print("[WARNING] REPO_URL not found in env_vars; using placeholder.")
-                repo_url = "https://github.com/your-org/your-repo"
-            devcontainer["remoteEnv"]["LEDGERFLOW_REPO_URL"] = repo_url
-            patched = True
-        with open(devcontainer_json_dst, "w") as f:
-            json.dump(devcontainer, f, indent=4)
-        print(
-            f"Copied and patched devcontainer.json to {devcontainer_json_dst}{' (patched)' if patched else ''}"
-        )
-    else:
-        print(
-            f"[WARNING] devcontainer.json template not found at {devcontainer_json_src}"
         )
 
     # Reminders for secrets
