@@ -21,161 +21,124 @@ LedgerFlow AI Team provides two primary tools for managing AI agent environments
 
 ```
 LedgerFlow_AI_Team/
-├── .env.{project}        # Project environment variables (generated)
-├── scaffold_team.py      # Team configuration generator
-├── docs/                 # Documentation
-│   ├── global/           # Team-wide docs
-│   └── projects/         # Project-specific docs
-│       └── {project}/    # Docs for a specific project
-├── roles/                # Role templates
-│   ├── python_coder/     # Example role
-│   │   ├── docs/         # Role documentation
-│   │   ├── .env.sample   # Environment template
-│   │   └── mcp_config.template.json  # MCP config template
-│   └── {role}/           # Other role templates
-├── sessions/             # Agent environments
-│   ├── _shared/          # Shared resources
-│   └── {project}/        # Project-specific sessions
-│       └── {agent}/      # Individual agent session
-│           ├── .devcontainer/  # Container configuration
-│           └── payload/   # Agent workspace
-├── team-cli/             # Team management CLI
-│   └── team_cli.py       # CLI implementation
-└── teams/                # Team configuration files
-    └── {project}/        # Project-specific config
-        ├── checklist.md  # Setup instructions
-        └── env.template  # Environment template
+├── teams/                       # All team-related content in one place
+│   ├── _templates/              # Shared templates for all teams
+│   ├── _shared/                 # Shared resources across teams
+│   ├── {team1}/                 # Everything for team1
+│   │   ├── config/              # Team configuration
+│   │   │   ├── env              # Environment file (was .env.team1)
+│   │   │   ├── checklist.md     # Setup instructions
+│   │   │   └── manifest.json    # Team composition details
+│   │   └── sessions/            # Team sessions
+│   │       ├── pm_guardian/     # Session for this role
+│   │       └── python_coder/    # Session for this role
+│   └── {team2}/                 # Another team's config and sessions
+├── roles/                       # Role templates and documentation
+│   ├── _templates/              # Shared templates for all roles
+│   ├── pm_guardian/             # PM Guardian role definition
+│   ├── python_coder/            # Python Coder role definition
+│   └── reviewer/                # Reviewer role definition
+├── docs/                        # Global documentation
+│   ├── global/                  # Global docs for all teams
+│   └── projects/                # Docs specific to projects
+├── tools/                       # Command-line tools
+│   ├── scaffold_team.py         # Team configuration generator
+│   ├── team_cli.py              # Session management tool
+│   └── utils/                   # Helper utilities
+├── templates/                   # System-wide templates
+│   ├── devcontainer/            # Base container configuration
+│   └── scripts/                 # Helper scripts
+├── README.md
+└── pyproject.toml
 ```
 
-## Workflow: scaffold_team.py → team-cli.py
+## Getting Started
 
-The complete workflow for setting up a new AI team involves:
-
-1. **Generate Team Configuration** with scaffold_team.py:
-   ```bash
-   # Full interactive mode
-   python scaffold_team.py
-   
-   # With command-line arguments
-   python scaffold_team.py --project myteam --prefix user --domain example.com --roles pm_guardian,python_coder
-   ```
-   
-   This creates:
-   - `.env.myteam` file with environment variables (team and per-role)
-   - `teams/myteam/checklist.md` with setup instructions
-   - `teams/myteam/env.template` for reference
-
-2. **Fill in Required API Keys** in the generated `.env.myteam` file:
-   - Team-level: `ANTHROPIC_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, `SLACK_BOT_TOKEN`, etc.
-   - Per-role tokens: `PM_GUARDIAN_SLACK_TOKEN`, `PM_GUARDIAN_GITHUB_TOKEN`, etc.
-
-3. **Create Agent Sessions** with team-cli.py:
-   ```bash
-   python team-cli/team_cli.py create-crew --env-file .env.myteam
-   ```
-   
-   This creates:
-   - Agent session directories in `sessions/myteam/`
-   - DevContainer configuration for each agent
-   - SSH key pair for each agent
-   - Documentation from global, project, and role sources
-
-4. **Launch Agent Containers**:
-   - Open each agent directory in VS Code/Cursor
-   - Use "Reopen in Container" to start the agent's container
-   - The container restore script configures everything automatically
-
-## Environment Variable Naming Convention
-
-For team-cli.py to correctly create sessions, environment variables must follow these patterns:
-
-- `ROLE_EMAIL`: The role's email address (e.g., `PM_GUARDIAN_EMAIL`)
-- `ROLE_SLACK_TOKEN`: The role's Slack bot token (e.g., `PM_GUARDIAN_SLACK_TOKEN`)
-- `ROLE_GITHUB_TOKEN`: The role's GitHub token (e.g., `PM_GUARDIAN_GITHUB_TOKEN`)
-
-Team-cli extracts session names by parsing these variables:
-- `PM_GUARDIAN_SLACK_TOKEN` → `pm_guardian`
-- `PYTHON_CODER_GITHUB_TOKEN` → `python_coder`
-
-The scaffold_team.py script automatically generates variables in the correct format.
-
-## Commands and Options
-
-### scaffold_team.py
+### 1. Clone the Repository
 
 ```bash
-# Interactive mode
+git clone https://github.com/your-org/LedgerFlow_AI_Team.git
+cd LedgerFlow_AI_Team
+```
+
+### 2. Create a Team Configuration
+
+Use `scaffold_team.py` to generate team configuration files:
+
+```bash
+# Interactive mode (recommended for first-time setup)
 python scaffold_team.py
 
-# Command-line mode
-python scaffold_team.py --project myteam --prefix user --domain example.com --roles pm_guardian,python_coder
-
-# Help
-python scaffold_team.py --help
+# Non-interactive mode with CLI flags
+python scaffold_team.py --project testproject --prefix user
 ```
 
-### team-cli.py
+This generates:
+- Environment file (.env.{project})
+- Environment template (teams/{project}/env.template)
+- Setup checklist (teams/{project}/checklist.md)
+
+### 3. Create Agent Sessions
+
+Use `team_cli.py` to create agent sessions:
 
 ```bash
-# Create all sessions for a project
-python team-cli/team_cli.py create-crew --env-file .env.myteam
+# Create a single agent session with an automatically generated SSH key
+python team-cli/team_cli.py create-session --project testproject --name agent1 --role python_coder --generate-ssh-key
 
-# Create a single session
-python team-cli/team_cli.py create-session --name agent1 --role python_coder --generate-ssh-key
+# Create a single agent session with an existing SSH key
+python team-cli/team_cli.py create-session --project testproject --name agent2 --role pm_guardian --ssh-key ~/.ssh/existing_key
 
-# Add a new role template
-python team-cli/team_cli.py add-role new_role_name
-
-# Help
-python team-cli/team_cli.py --help
+# Create all agent sessions defined in the environment file
+python team-cli/team_cli.py create-crew --env-file .env.testproject
 ```
 
-## Documentation Inheritance
+### 4. Access Agent Sessions
 
-Documentation is organized in a hierarchical structure and combined during session creation:
+Each agent session is an isolated environment with its own documentation, SSH key, and configuration:
 
-1. **Global Documentation** (`docs/global/`): Available to all agents
-2. **Project Documentation** (`docs/projects/{project}/`): Project-specific docs
-3. **Role Documentation** (`roles/{role}/docs/`): Role-specific docs
+```bash
+cd sessions/testproject/agent1
 
-The final documentation is combined in the agent's payload directory: `sessions/{project}/{agent}/payload/docs/`.
+# Start the agent's container
+./restore.sh
+
+# Connect to the agent's container using SSH
+ssh -i ~/.ssh/agent1_key agent@localhost -p 2222
+```
+
+## Environment Variable Naming Conventions
+
+To ensure compatibility between `scaffold_team.py` and `team-cli.py`, the following naming conventions are used:
+
+1. Role-specific variables use the format: `ROLE_UPPER_KEY_NAME`
+   - Example: `PM_GUARDIAN_SLACK_TOKEN`, `PYTHON_CODER_GITHUB_TOKEN`
+
+2. Global variables use the format: `PROJECT_KEY_NAME`
+   - Example: `PROJECT_ROOT_URL`, `PROJECT_DATABASE_URL`
+
+These conventions are critical for proper session extraction in `team-cli.py`.
 
 ## Troubleshooting
 
-### Environment Configuration
+### Common Issues
 
-- **Session Extraction Issues**: If team-cli isn't creating sessions for certain roles, check that your environment variables follow the naming pattern described above. 
-- **Missing Keys**: If you see "Missing required keys" errors, ensure each role has all the tokens specified (Slack, GitHub) in the environment file.
+1. **Session extraction fails**: 
+   - Ensure environment variables follow the naming convention `ROLE_UPPER_KEY_NAME`
+   - Check that required keys exist for each role (`_SLACK_TOKEN`, `_ROLE_ARN`, etc.)
 
-### Role Templates
+2. **SSH key permission issues**:
+   - Run `chmod 600 path/to/key` to set correct permissions on SSH private keys
 
-- **"Role not found" Warning**: If you see a warning about a role not found, create a directory in `roles/{role_name}/` with the appropriate structure.
-- **"Falling back to python_coder"**: This is normal if you're using a role that doesn't have a custom template. You can create a custom role template if needed.
+3. **Container won't start**:
+   - Check Docker is running
+   - Verify port conflicts with `docker ps`
 
-### SSH Keys
-
-- **"No SSH private key found"**: Either generate a key with `--generate-ssh-key` or provide one with `--ssh-key`.
-- **SSH Key Permission Issues**: Ensure the SSH key permissions are set to 600 (read/write for owner only).
-
-## Security Notes
-
-- **Never commit .env files or SSH keys to git**
-- All sensitive directories are already in .gitignore
-- Store secrets in secure storage (1Password, iCloud, etc.)
-- Use unique SSH keys for each agent
-- The restore script sets proper permissions inside containers
-
-## Requirements
-
-- Python 3.7+
-- Docker for containers
-- VS Code or Cursor with Remote Containers extension
-- Git
-- Node.js (for MCP servers)
+For more information, see the documentation in the `/docs` directory.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to this project.
 
 ## License
 

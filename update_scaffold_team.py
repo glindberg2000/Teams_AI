@@ -10,13 +10,15 @@ Usage:
     python update_scaffold_team.py --execute    # Update the scaffold_team.py file
 
 Changes made:
-1. Update file paths to match new directory structure
-2. Update environment file paths to use config/teams/active/{project}/env
-3. Update checklist path to use config/teams/active/{project}/checklist.md
+1. Update file paths to match new domain-centric structure
+2. Update environment file paths to use teams/{project}/config/env
+3. Update checklist path to use teams/{project}/config/checklist.md
+4. Update imports and references to team_cli.py
 """
 import argparse
 import re
 from pathlib import Path
+import os
 
 
 def parse_args():
@@ -26,7 +28,9 @@ def parse_args():
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
-        "--dry-run", action="store_true", help="Show changes without modifying files"
+        "--dry-run",
+        action="store_true",
+        help="Show changes without modifying files",
     )
     group.add_argument(
         "--execute", action="store_true", help="Update the scaffold_team.py file"
@@ -34,159 +38,95 @@ def parse_args():
     return parser.parse_args()
 
 
-def update_scaffold_team(dry_run=True):
-    """Update scaffold_team.py to work with the new directory structure."""
-    # Determine the path to scaffold_team.py (either in root or tools directory)
-    scaffold_path = Path("scaffold_team.py")
-    if not scaffold_path.exists():
-        scaffold_path = Path("tools/scaffold_team.py")
-        if not scaffold_path.exists():
-            print("Error: Could not find scaffold_team.py in the repository.")
-            return False
+def update_paths(dry_run=True):
+    """Update file paths in scaffold_team.py."""
+    # Files to update
+    files_to_update = {
+        "scaffold_team.py": "tools/scaffold_team.py",
+        "team-cli/team_cli.py": "tools/team_cli.py",
+    }
 
-    print(f"Updating {scaffold_path}...")
+    # Path replacements to make in the code
+    path_replacements = [
+        # Update environment file paths
+        (r"\.env\.(\w+)", r"teams/\1/config/env"),
+        (r"teams/(\w+)/env\.template", r"teams/\1/config/env.template"),
+        (r"teams/(\w+)/checklist\.md", r"teams/\1/config/checklist.md"),
+        # Update import paths
+        (r"from team-cli import team_cli", r"from tools import team_cli"),
+        (r"import team-cli\.team_cli", r"import tools.team_cli"),
+        # Update references to CLI
+        (r"python team-cli/team_cli\.py", r"python tools/team_cli.py"),
+    ]
 
-    with open(scaffold_path, "r") as f:
-        content = f.read()
+    for file_path, new_path in files_to_update.items():
+        # Skip if the file doesn't exist
+        if not Path(file_path).exists():
+            print(f"Warning: {file_path} not found, skipping.")
+            continue
 
-    # Update paths for environment files
-    content = re.sub(
-        r"env_file = f'\.env\.{project}'",
-        r"env_file = f'config/teams/active/{project}/env'",
-        content,
-    )
+        # Read the file content
+        with open(file_path, "r") as f:
+            content = f.read()
 
-    # Update paths for checklist files
-    content = re.sub(
-        r"checklist_path = Path\(f'teams/{project}/checklist\.md'\)",
-        r"checklist_path = Path(f'config/teams/active/{project}/checklist.md')",
-        content,
-    )
+        # Apply all replacements
+        new_content = content
+        for pattern, replacement in path_replacements:
+            new_content = re.sub(pattern, replacement, new_content)
 
-    # Update paths for template files
-    content = re.sub(
-        r"template_path = Path\(f'teams/{project}/env\.template'\)",
-        r"template_path = Path(f'config/teams/active/{project}/env.template')",
-        content,
-    )
+        # Handle specific updates for scaffold_team.py
+        if file_path == "scaffold_team.py":
+            # Update file paths in the script
+            new_content = new_content.replace(
+                "with open(f'.env.{self.project}', 'w') as f:",
+                "os.makedirs(f'teams/{self.project}/config', exist_ok=True)\n        with open(f'teams/{self.project}/config/env', 'w') as f:",
+            )
 
-    # Update directory creation
-    content = re.sub(
-        r"teams_dir = Path\('teams'\)",
-        r"teams_dir = Path('config/teams/active')",
-        content,
-    )
+            new_content = new_content.replace(
+                "with open(f'teams/{self.project}/env.template', 'w') as f:",
+                "os.makedirs(f'teams/{self.project}/config', exist_ok=True)\n        with open(f'teams/{self.project}/config/env.template', 'w') as f:",
+            )
 
-    # Update template copying
-    content = re.sub(
-        r"template_dir = Path\('teams/_templates'\)",
-        r"template_dir = Path('templates/team')",
-        content,
-    )
+            new_content = new_content.replace(
+                "with open(f'teams/{self.project}/checklist.md', 'w') as f:",
+                "os.makedirs(f'teams/{self.project}/config', exist_ok=True)\n        with open(f'teams/{self.project}/config/checklist.md', 'w') as f:",
+            )
 
-    # Update reference to team-cli
-    content = re.sub(
-        r"python team-cli/team_cli\.py", r"python tools/team-cli/team_cli.py", content
-    )
+            # Update class docstring
+            new_content = re.sub(
+                r'"""Generate team configuration\.\s+This class handles.*?"""',
+                '"""Generate team configuration.\n\n    This class handles the generation of team configuration files including:\n    - Environment file (teams/{project}/config/env)\n    - Environment template (teams/{project}/config/env.template)\n    - Setup checklist (teams/{project}/config/checklist.md)\n    """',
+                new_content,
+                flags=re.DOTALL,
+            )
 
-    if dry_run:
-        print("\nChanges that would be made:")
-        print("----------------------------")
-        print(content[:500] + "...\n")  # Print first 500 chars as preview
-    else:
-        with open(scaffold_path, "w") as f:
-            f.write(content)
-        print(f"Updated {scaffold_path}")
+        # Update team_cli.py
+        if file_path == "team-cli/team_cli.py":
+            # Update session creation logic to use new path structure
+            new_content = new_content.replace(
+                "dest_dir = Path(f'sessions/{self.project}/{self.name}')",
+                "dest_dir = Path(f'teams/{self.project}/sessions/{self.name}')",
+            )
 
-    return True
+            # Update environment variable loading
+            new_content = new_content.replace(
+                "env_file = f'.env.{project}'",
+                "env_file = f'teams/{project}/config/env'",
+            )
 
+        # Show the changes or write the updated file
+        if dry_run:
+            print(f"Would update {file_path} -> {new_path}:")
+            for pattern, replacement in path_replacements:
+                print(f"  {pattern} -> {replacement}")
+        else:
+            # Create parent directory if needed
+            Path(new_path).parent.mkdir(parents=True, exist_ok=True)
 
-def update_team_cli(dry_run=True):
-    """Update team_cli.py to work with the new directory structure."""
-    # Determine the path to team_cli.py
-    team_cli_path = Path("team-cli/team_cli.py")
-    if not team_cli_path.exists():
-        team_cli_path = Path("tools/team-cli/team_cli.py")
-        if not team_cli_path.exists():
-            print("Error: Could not find team_cli.py in the repository.")
-            return False
-
-    print(f"Updating {team_cli_path}...")
-
-    with open(team_cli_path, "r") as f:
-        content = f.read()
-
-    # Update role paths
-    content = re.sub(
-        r"roles_dir = Path\('roles'\)", r"roles_dir = Path('config/roles')", content
-    )
-
-    # Update session directory paths
-    content = re.sub(
-        r"sessions_dir = Path\('sessions'\)",
-        r"sessions_dir = Path('sessions/active')",
-        content,
-    )
-
-    # Update docs paths
-    content = re.sub(
-        r"global_docs = Path\('docs/global'\)",
-        r"global_docs = Path('docs/global')",
-        content,
-    )
-
-    # Update .devcontainer template path
-    content = re.sub(
-        r"devcontainer_template = Path\('\.devcontainer'\)",
-        r"devcontainer_template = Path('templates/.devcontainer')",
-        content,
-    )
-
-    if dry_run:
-        print("\nChanges that would be made to team_cli.py:")
-        print("----------------------------------------")
-        print(content[:500] + "...\n")  # Print first 500 chars as preview
-    else:
-        with open(team_cli_path, "w") as f:
-            f.write(content)
-        print(f"Updated {team_cli_path}")
-
-    return True
-
-
-def update_readme(dry_run=True):
-    """Update README.md to reflect the new directory structure."""
-    readme_path = Path("README.md")
-    if not readme_path.exists():
-        print("Error: Could not find README.md in the repository.")
-        return False
-
-    print(f"Updating {readme_path}...")
-
-    with open(readme_path, "r") as f:
-        content = f.read()
-
-    # Update directory structure references
-    content = re.sub(r"\.env\.{project}", r"config/teams/active/{project}/env", content)
-
-    content = re.sub(
-        r"python scaffold_team\.py", r"python tools/scaffold_team.py", content
-    )
-
-    content = re.sub(
-        r"python team-cli/team_cli\.py", r"python tools/team-cli/team_cli.py", content
-    )
-
-    if dry_run:
-        print("\nChanges that would be made to README.md:")
-        print("--------------------------------------")
-        print(content[:500] + "...\n")  # Print first 500 chars as preview
-    else:
-        with open(readme_path, "w") as f:
-            f.write(content)
-        print(f"Updated {readme_path}")
-
-    return True
+            # Write the updated content
+            with open(new_path, "w") as f:
+                f.write(new_content)
+            print(f"Updated {new_path}")
 
 
 def main():
@@ -197,24 +137,16 @@ def main():
     if dry_run:
         print("=== DRY RUN - No changes will be made ===")
     else:
-        print("=== EXECUTING - Updating files ===")
-        print("WARNING: This will modify files!")
-        confirm = input("Continue? (yes/no): ").strip().lower()
-        if confirm != "yes":
-            print("Aborted.")
-            return
+        print("=== EXECUTING - Updating files for new directory structure ===")
 
-    # Update files
-    update_scaffold_team(dry_run)
-    update_team_cli(dry_run)
-    update_readme(dry_run)
+    update_paths(dry_run)
 
     if dry_run:
         print("\n=== DRY RUN COMPLETE ===")
         print("Run with --execute to make these changes.")
     else:
         print("\n=== UPDATE COMPLETE ===")
-        print("Please review the changes to ensure everything works as expected.")
+        print("Please review the changes and ensure all references are correct.")
 
 
 if __name__ == "__main__":
