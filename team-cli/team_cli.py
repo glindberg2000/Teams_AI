@@ -5,7 +5,7 @@ team_cli.py - CLI tool for LedgerFlow AI Team session management
 Quickstart:
   python team-cli/team_cli.py create-session --name agent-name --role python_coder --generate-ssh-key --prompt-all
   python team-cli/team_cli.py create-session --name agent-name --role python_coder --ssh-key ~/.ssh/existing_key
-  python team-cli/team_cli.py create-session --name agent-name --role python_coder --all-env GIT_USER_NAME=alex GIT_USER_EMAIL=alex@example.com ...
+  python team-cli/team_cli.py create-crew --env-file .env.myproject
 
 Key Features:
 - Creates isolated agent sessions from role templates
@@ -14,6 +14,17 @@ Key Features:
 - Manages documentation inheritance (global -> project -> role -> session)
 - Generates restore scripts for container setup
 - Sets up devcontainer configuration for VSCode/Cursor
+
+Environment Variable Naming Convention:
+  For proper session extraction, environment variables must follow these patterns:
+  - ROLE_EMAIL: For the role's email address (e.g., PM_GUARDIAN_EMAIL)
+  - ROLE_SLACK_TOKEN: For the role's Slack token (e.g., PM_GUARDIAN_SLACK_TOKEN)
+  - ROLE_GITHUB_TOKEN: For the role's GitHub token (e.g., PM_GUARDIAN_GITHUB_TOKEN)
+
+  Team-cli extracts session names by taking the parts before _SLACK_TOKEN, _GITHUB_TOKEN, or _EMAIL
+  and joining them with underscores in lowercase. For example:
+  - PM_GUARDIAN_SLACK_TOKEN -> ["PM", "GUARDIAN"] -> "pm_guardian"
+  - PYTHON_CODER_GITHUB_TOKEN -> ["PYTHON", "CODER"] -> "python_coder"
 
 Required Environment Variables:
 - GIT_USER_NAME, GIT_USER_EMAIL: Git configuration
@@ -26,7 +37,13 @@ Directory Structure:
   docs/global/           # Global docs for all agents/projects
   docs/projects/<name>/  # Per-project docs
   roles/<role>/docs/     # Per-role docs
-  sessions/<agent>/      # Per-agent isolated environments
+  sessions/<project>/    # Project-specific agent sessions
+    <agent>/             # Individual agent environment
+      .devcontainer/     # Container configuration
+      payload/           # Agent workspace
+        docs/            # Inherited documentation
+        .ssh/            # Agent's SSH keys
+        .env             # Agent's environment variables
 
 See README.md for full documentation and setup instructions.
 """
@@ -700,9 +717,28 @@ def create_crew(args):
             session_name = "_".join(parts[:-2])
             sessions.setdefault(session_name, {})["github_token"] = value
 
+    # If no sessions found, print error and exit
+    if not sessions:
+        print("\nError: No valid sessions found in environment file.")
+        print(
+            "Make sure you have variables named like PM_GUARDIAN_EMAIL, PM_GUARDIAN_SLACK_TOKEN, etc."
+        )
+        sys.exit(1)
+
     # Create each session
     for session_name, config in sessions.items():
         print(f"\nCreating session: {session_name}")
+
+        # Check if all required keys are present
+        required_keys = ["email", "slack_token", "github_token"]
+        missing_keys = [k for k in required_keys if k not in config]
+        if missing_keys:
+            print(
+                f"Error: Missing required keys for session {session_name}: {', '.join(missing_keys)}"
+            )
+            print(f"Available keys: {', '.join(config.keys())}")
+            print(f"Skipping session {session_name}")
+            continue
 
         # Use session name as role, fallback to python_coder with warning
         role_dir = ROLES_DIR / session_name

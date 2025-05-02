@@ -4,6 +4,7 @@
 - Provides a secure, isolated environment for AI agent development and collaboration
 - Enables role-based access and configuration for different agent types
 - Streamlines agent onboarding with automated documentation and setup
+- Standardizes team configuration and setup with scaffolding tools
 
 ## Problems Solved
 1. Agent Isolation & Security
@@ -13,11 +14,12 @@
 
 2. Configuration Management
    - Automated MCP server setup with environment-specific configuration
-   - Standardized environment variable handling
+   - Standardized environment variable handling with consistent naming conventions
    - SSH key management (generation or existing key usage)
+   - Team-wide configuration scaffolding with proper validation
 
 3. Documentation Organization
-   - Hierarchical documentation structure (global -> project -> role -> session)
+   - Hierarchical documentation structure (global → project → role → session)
    - Automatic documentation inheritance during session creation
    - Centralized shared resources in _shared directory
 
@@ -25,6 +27,7 @@
    - Integrated task management through Taskmaster MCP
    - GitHub and Slack integration for collaboration
    - Standardized development environment through DevContainers
+   - Streamlined team setup process with scaffolding and checklists
 
 ## Core Components
 1. Team CLI (team_cli.py)
@@ -32,15 +35,24 @@
    - Role template handling
    - Documentation distribution
    - Environment configuration
+   - Multi-session creation via create-crew command
+   - Consistent session name extraction from environment variables
 
-2. MCP Integration
+2. Team Scaffold (scaffold_team.py)
+   - Team configuration generation (.env.{project} files)
+   - Environment templates in teams/{project}/ directory
+   - Setup checklist creation with detailed instructions
+   - Standardized naming conventions (ROLE_SLACK_TOKEN format)
+   - Project directory structure
+
+3. MCP Integration
    - Taskmaster for task management
    - GitHub for code management
    - Slack for communication
    - Context7 for documentation access
    - Puppeteer for web automation
 
-3. DevContainer Setup
+4. DevContainer Setup
    - Consistent development environment
    - Automated restore scripts
    - Configuration regeneration
@@ -51,6 +63,7 @@
 - Documentation is automatically distributed based on role/project
 - MCP servers are configured correctly for each agent
 - Team collaboration tools (GitHub, Slack) are properly integrated
+- Teams can be configured with standardized naming and setup process
 
 ## Technical Requirements
 - Python 3.7+ for CLI tools
@@ -58,17 +71,26 @@
 - Node.js for MCP servers
 - Git for version control
 - SSH key management capability
+- Questionary for interactive prompts
+- YAML for configuration file handling
 
 ## Current Status
-- Basic session creation and management implemented
-- Documentation inheritance system working
+- Session creation and management fully implemented
+- Documentation inheritance system working properly
 - MCP server configuration automated
 - SSH key handling implemented
-- Environment variable management working
+- Environment variable management working with consistent naming
+- Team scaffolding tool working correctly with team-cli integration
+- End-to-end workflow tested successfully
 
 ## Next Steps
-- Implement team-wide session creation
-- Add session cleanup/archival functionality
-- Enhance documentation templates
-- Add role validation and testing
-- Implement session state monitoring 
+- Improve project structure organization
+  - Move temporary .env files to teams directory
+  - Organize sessions by project/team
+- Add cleanup and archival functionality
+- Enhance role validation and support
+- Develop test suite for automated verification
+- Add session state monitoring and healthchecks
+- Create detailed troubleshooting documentation
+- Support for more complex team structures
+- Add monitoring and metrics for container health 

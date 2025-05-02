@@ -1,216 +1,182 @@
-# AI Team Workspace
+# LedgerFlow AI Team Workspace
 
-This repository provides automation for creating isolated, role-based AI agent sessions.
+A secure, isolated environment for AI agent development and collaboration, providing role-based access, documentation inheritance, and standardized configuration.
 
-## Quick Start
+## Overview
 
-1. Clone this repo
-2. Install Python 3.7+
-3. Create a new session:
-   ```bash
-   # With interactive prompts for all values:
-   python team-cli/team_cli.py create-session --name pm-guardian --role python_coder --prompt-all
+LedgerFlow AI Team provides two primary tools for managing AI agent environments:
 
-   # Or with all values specified:
-   python team-cli/team_cli.py create-session \
-     --name pm-guardian \
-     --role python_coder \
-     --ssh-key ~/.ssh/id_rsa \
-     --all-env \
-       GIT_USER_NAME="PM Guardian" \
-       GIT_USER_EMAIL="pm@example.com" \
-       GITHUB_PERSONAL_ACCESS_TOKEN="ghp_xxx" \
-       SLACK_BOT_TOKEN="xoxb-xxx" \
-       SLACK_TEAM_ID="Txxx" \
-       ANTHROPIC_API_KEY="sk-xxx" \
-       PERPLEXITY_API_KEY="pplx-xxx"
-   ```
+1. **scaffold_team.py**: Generates standardized team configuration files (.env.{project}) and setup checklists.
+2. **team-cli.py**: Creates isolated agent sessions based on the configuration.
 
-4. Launch the container - the restore script will automatically:
-   - Set up SSH keys
-   - Configure environment variables
-   - Set up MCP configuration
-   - Copy global rules
+## Key Features
 
-## Documentation Structure
+- **Isolated Agent Environments**: Each agent gets a separate container with its own configuration and SSH keys
+- **Documentation Inheritance**: Global → Project → Role → Session hierarchy
+- **Secure Secret Management**: No sensitive data in Git repository
+- **Role-Based Configuration**: Role-specific templates and documentation
+- **Automated Setup**: Scripted creation of team environments
 
-- `docs/global/` - Global docs for all agents/projects
-- `docs/projects/<project_name>/` - Per-project docs
-- `roles/<role>/docs/` - Per-role docs
-- `sessions/<agent>/docs/` - Per-session docs (copied from above)
+## Directory Structure
 
-## Security
-
-- **IMPORTANT**: Do not commit real secrets or private keys to this repository
-- Store sensitive information securely:
-  - SSH keys in `sessions/<agent>/payload/.ssh/`
-  - Environment variables in `sessions/<agent>/payload/.env`
-  - MCP configuration in `sessions/<agent>/payload/mcp_config.json`
-- Generated session folders should not be committed to git
-
-## Key Scripts & Tools
-
-- `team-cli/team_cli.py` - Session management CLI
-  - Create new sessions from role templates
-  - Configure SSH keys and environment variables
-  - Set up documentation and payload
-- `.devcontainer/` - DevContainer setup and configuration
-  - `devcontainer.json` - Container configuration
-  - `Dockerfile` - Container image definition
-  - `scripts/` - Setup and utility scripts
-
-## Environment Variables
-
-Required environment variables (set in `payload/.env`):
-- `GITHUB_PERSONAL_ACCESS_TOKEN` - GitHub access token
-- `SLACK_BOT_TOKEN` - Slack bot user token
-- `SLACK_TEAM_ID` - Slack workspace ID
-- `GIT_USER_NAME` - Git commit author name
-- `GIT_USER_EMAIL` - Git commit author email
-- `GIT_SSH_KEY_PATH` - Path to SSH key in container
-- `ANTHROPIC_API_KEY` - Claude API key
-- `PERPLEXITY_API_KEY` - Perplexity AI key
-
-## Adding New Roles
-
-```bash
-python team-cli/team_cli.py add-role \
-  --name new-role \
-  --docs docs/role-specific/*.md \
-  --env-sample .env.role.example
+```
+LedgerFlow_AI_Team/
+├── .env.{project}        # Project environment variables (generated)
+├── scaffold_team.py      # Team configuration generator
+├── docs/                 # Documentation
+│   ├── global/           # Team-wide docs
+│   └── projects/         # Project-specific docs
+│       └── {project}/    # Docs for a specific project
+├── roles/                # Role templates
+│   ├── python_coder/     # Example role
+│   │   ├── docs/         # Role documentation
+│   │   ├── .env.sample   # Environment template
+│   │   └── mcp_config.template.json  # MCP config template
+│   └── {role}/           # Other role templates
+├── sessions/             # Agent environments
+│   ├── _shared/          # Shared resources
+│   └── {project}/        # Project-specific sessions
+│       └── {agent}/      # Individual agent session
+│           ├── .devcontainer/  # Container configuration
+│           └── payload/   # Agent workspace
+├── team-cli/             # Team management CLI
+│   └── team_cli.py       # CLI implementation
+└── teams/                # Team configuration files
+    └── {project}/        # Project-specific config
+        ├── checklist.md  # Setup instructions
+        └── env.template  # Environment template
 ```
 
-See `roles/python_coder` for an example role template.
+## Workflow: scaffold_team.py → team-cli.py
 
-## Documentation Structure
+The complete workflow for setting up a new AI team involves:
 
-- `docs/global/` — Global docs for all agents/projects (roles, tools, integrations, etc.)
-- `docs/projects/<project_name>/` — Project-specific docs
-- `roles/<role>/docs/` — Role-specific docs
-- `sessions/<agent>/docs/` — Per-session docs (auto-populated from above, never tracked in git)
-- `tasks/` — Generated task files and documentation
-- `scripts/` — Utility scripts and PRD templates
+1. **Generate Team Configuration** with scaffold_team.py:
+   ```bash
+   # Full interactive mode
+   python scaffold_team.py
+   
+   # With command-line arguments
+   python scaffold_team.py --project myteam --prefix user --domain example.com --roles pm_guardian,python_coder
+   ```
+   
+   This creates:
+   - `.env.myteam` file with environment variables (team and per-role)
+   - `teams/myteam/checklist.md` with setup instructions
+   - `teams/myteam/env.template` for reference
 
-## Security & Secret Storage
+2. **Fill in Required API Keys** in the generated `.env.myteam` file:
+   - Team-level: `ANTHROPIC_API_KEY`, `GITHUB_PERSONAL_ACCESS_TOKEN`, `SLACK_BOT_TOKEN`, etc.
+   - Per-role tokens: `PM_GUARDIAN_SLACK_TOKEN`, `PM_GUARDIAN_GITHUB_TOKEN`, etc.
 
-- **Never commit real secrets or private keys to this repo**
-- The `.gitignore` is configured to ignore:
-  - All `.env` files
-  - All `payload/.ssh/` directories
-  - All generated session folders
-  - Task Master temporary files
-- SSH keys are generated or copied into `payload/.ssh/` and are never tracked
-- **Store secrets and sensitive configs securely outside git** (iCloud, 1Password, etc.)
-- When onboarding a new machine, restore secrets from your secure backup
-- **TIP:** If you forget to provide API keys during session creation, add them to `.env` before launching
+3. **Create Agent Sessions** with team-cli.py:
+   ```bash
+   python team-cli/team_cli.py create-crew --env-file .env.myteam
+   ```
+   
+   This creates:
+   - Agent session directories in `sessions/myteam/`
+   - DevContainer configuration for each agent
+   - SSH key pair for each agent
+   - Documentation from global, project, and role sources
 
-## Task Master Integration
+4. **Launch Agent Containers**:
+   - Open each agent directory in VS Code/Cursor
+   - Use "Reopen in Container" to start the agent's container
+   - The container restore script configures everything automatically
 
-Task Master provides AI-driven task management through the Model Control Protocol (MCP):
+## Environment Variable Naming Convention
 
-- **Initialize a project:**
-  ```bash
-  task-master init -y
-  ```
+For team-cli.py to correctly create sessions, environment variables must follow these patterns:
 
-- **Generate tasks from PRD:**
-  ```bash
-  task-master parse-prd scripts/prd.txt
-  ```
+- `ROLE_EMAIL`: The role's email address (e.g., `PM_GUARDIAN_EMAIL`)
+- `ROLE_SLACK_TOKEN`: The role's Slack bot token (e.g., `PM_GUARDIAN_SLACK_TOKEN`)
+- `ROLE_GITHUB_TOKEN`: The role's GitHub token (e.g., `PM_GUARDIAN_GITHUB_TOKEN`)
 
-- **Common commands:**
-  ```bash
-  task-master list              # List all tasks
-  task-master next             # Show next available task
-  task-master expand --id=<id> # Break down a task
-  task-master show <id>        # View task details
-  ```
+Team-cli extracts session names by parsing these variables:
+- `PM_GUARDIAN_SLACK_TOKEN` → `pm_guardian`
+- `PYTHON_CODER_GITHUB_TOKEN` → `python_coder`
 
-See [README-task-master.md](README-task-master.md) for detailed Task Master documentation.
+The scaffold_team.py script automatically generates variables in the correct format.
 
-## Key Scripts & CLI
+## Commands and Options
 
-- `team-cli/team_cli.py` — Main CLI for session and agent management
-  ```bash
-  python team-cli/team_cli.py --help        # Full help
-  python team-cli/team_cli.py --simple-help # Quick reference
-  ```
-- `sync-devcontainer.sh` — Copies the root `.devcontainer/` into each session
-- `.devcontainer/scripts/setup_workspace.sh` — Clones main repo into session
-- `.devcontainer/scripts/refresh_configs.sh` — Renders MCP config and injects secrets
+### scaffold_team.py
+
+```bash
+# Interactive mode
+python scaffold_team.py
+
+# Command-line mode
+python scaffold_team.py --project myteam --prefix user --domain example.com --roles pm_guardian,python_coder
+
+# Help
+python scaffold_team.py --help
+```
+
+### team-cli.py
+
+```bash
+# Create all sessions for a project
+python team-cli/team_cli.py create-crew --env-file .env.myteam
+
+# Create a single session
+python team-cli/team_cli.py create-session --name agent1 --role python_coder --generate-ssh-key
+
+# Add a new role template
+python team-cli/team_cli.py add-role new_role_name
+
+# Help
+python team-cli/team_cli.py --help
+```
+
+## Documentation Inheritance
+
+Documentation is organized in a hierarchical structure and combined during session creation:
+
+1. **Global Documentation** (`docs/global/`): Available to all agents
+2. **Project Documentation** (`docs/projects/{project}/`): Project-specific docs
+3. **Role Documentation** (`roles/{role}/docs/`): Role-specific docs
+
+The final documentation is combined in the agent's payload directory: `sessions/{project}/{agent}/payload/docs/`.
+
+## Troubleshooting
+
+### Environment Configuration
+
+- **Session Extraction Issues**: If team-cli isn't creating sessions for certain roles, check that your environment variables follow the naming pattern described above. 
+- **Missing Keys**: If you see "Missing required keys" errors, ensure each role has all the tokens specified (Slack, GitHub) in the environment file.
+
+### Role Templates
+
+- **"Role not found" Warning**: If you see a warning about a role not found, create a directory in `roles/{role_name}/` with the appropriate structure.
+- **"Falling back to python_coder"**: This is normal if you're using a role that doesn't have a custom template. You can create a custom role template if needed.
+
+### SSH Keys
+
+- **"No SSH private key found"**: Either generate a key with `--generate-ssh-key` or provide one with `--ssh-key`.
+- **SSH Key Permission Issues**: Ensure the SSH key permissions are set to 600 (read/write for owner only).
+
+## Security Notes
+
+- **Never commit .env files or SSH keys to git**
+- All sensitive directories are already in .gitignore
+- Store secrets in secure storage (1Password, iCloud, etc.)
+- Use unique SSH keys for each agent
+- The restore script sets proper permissions inside containers
+
+## Requirements
+
+- Python 3.7+
+- Docker for containers
+- VS Code or Cursor with Remote Containers extension
+- Git
+- Node.js (for MCP servers)
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details on DevContainer sync and best practices.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
----
+## License
 
-**WARNING:**
-- Never commit generated session folders or secrets to git
-- Always use secure storage for secrets (iCloud, 1Password, etc.)
-- Keep your API keys secure and never share them
-- For quick help:
-  ```bash
-  python team-cli/team_cli.py --simple-help
-  ```
-
-# LedgerFlow AI Team CLI
-
-## Role-Based Session Management
-
-### How Roles Work
-- Each session is created using a role directory: `roles/<role_name>/`
-- The session name is used as the role name by default
-- If the role directory does not exist, the CLI will warn and fall back to `python_coder`
-
-### Role Directory Structure
-```
-roles/<role_name>/
-  docs/                  # Role-specific documentation (markdown, guides, SOPs, etc.)
-  .env.sample            # Environment variable template for this role
-  mcp_config.template.json # MCP server config template (custom toolset for this role)
-  README.md              # (Optional) Explain the role's purpose and setup
-```
-
-### Custom MCP Config
-- If `mcp_config.template.json` is present in the role directory, it will be used to generate the session's `payload/mcp_config.json`
-- If not, the CLI uses the default MCP config
-- You can define custom tools, servers, or environment variables per role
-
-### Example Role
-- See `roles/example_role/` for a complete template
-- Includes sample docs, env, and MCP config
-- Copy and customize this folder to create new roles
-
-### Creating a New Role
-1. Copy `roles/example_role/` to `roles/<your_role_name>/`
-2. Edit `docs/` to add onboarding, checklists, or SOPs
-3. Edit `.env.sample` for required environment variables
-4. Edit `mcp_config.template.json` for custom tools/servers (optional)
-5. (Optional) Add a `README.md` to explain the role
-
-### Session Creation
-- When you run `create-crew` or `create-session`, the CLI:
-  - Uses the session name as the role
-  - Copies docs from `roles/<role>/docs/` into the session's payload
-  - Uses the role's MCP config if present
-  - Warns and falls back to `python_coder` if the role directory is missing
-
-### Example CLI Output
-```
-Creating session: example_role
-Available roles/templates:
-- pm_guardian
-- example_role
-- python_coder
-Created session 'example_role' from role 'example_role' in project 'example_project'.
-Included docs in session payload: ...
-Using custom MCP config template for role: roles/example_role
-Generated .../payload/mcp_config.json
-```
-
-### Best Practices
-- Always create a role directory for each session type you want to customize
-- Use the example_role as a starting point
-- Keep docs, env, and MCP config together for each role
-- The CLI will always tell you which role and config are being used 
+This project is proprietary and confidential. All rights reserved. 
