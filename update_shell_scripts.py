@@ -103,6 +103,8 @@ def update_script(script_path, dry_run=True, verbose=False):
         (r'(=|"|\'|\s+)\.env\.([a-zA-Z0-9_-]+)(\s|"|\'|$)', r"\1teams/\2/config/env\3"),
         # Environment files with CLI arguments
         (r"--env-file(\s+)\.env\.([a-zA-Z0-9_-]+)", r"--env-file\1teams/\2/config/env"),
+        # Environment files with variables
+        (r"\.env\.\$\{?([A-Za-z0-9_]+)\}?", r"teams/\$\1/config/env"),
         # Team files with common shell commands
         (
             r"(cd|cp|mkdir|rm|source|mv|find|ls)(\s+)teams/([a-zA-Z0-9_-]+)/checklist\.md",
@@ -126,6 +128,10 @@ def update_script(script_path, dry_run=True, verbose=False):
         (r"python(\s+)team-cli/team_cli\.py", r"python\1tools/team_cli.py"),
         (r"./scaffold_team\.py", r"./tools/scaffold_team.py"),
         (r"./team-cli/team_cli\.py", r"./tools/team_cli.py"),
+        # Legacy team-cli command structures
+        (r"team-cli\.py", r"tools/team_cli.py"),
+        # Restore scripts with project variable
+        (r"sessions/\$\{?([A-Za-z0-9_]+)\}?/", r"teams/\$\1/sessions/"),
     ]
 
     # Apply replacements and track changes

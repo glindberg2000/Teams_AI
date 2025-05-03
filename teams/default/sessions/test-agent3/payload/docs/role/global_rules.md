@@ -1,0 +1,2 @@
+# Global Rules
+Sample rules.

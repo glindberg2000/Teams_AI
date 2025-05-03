@@ -1,0 +1,50 @@
+# Environment configuration for testproj2 team
+# WARNING: Never commit this file to git!
+# Store a copy in your secure storage (iCloud, 1Password, etc.)
+
+# Team Configuration
+PROJECT_NAME=testproj2
+TEAM_ID=testproj2  # Used for container naming
+
+# Git Configuration
+GIT_USER_NAME="testuser"
+GIT_USER_EMAIL="testuser+testproj2@example.com"
+
+# GitHub Configuration
+GITHUB_PERSONAL_ACCESS_TOKEN=  # Required: Create at https://github.com/settings/tokens
+#                             # Needs: repo, workflow, read:org
+
+# Slack Configuration
+SLACK_BOT_TOKEN=              # Required: Create at https://api.slack.com/apps
+SLACK_TEAM_ID=               # Required: Get from Slack workspace URL
+SLACK_CHANNEL="testproj2"     # Main team channel
+
+# AI Integration
+ANTHROPIC_API_KEY=           # Required: Get from https://console.anthropic.com
+PERPLEXITY_API_KEY=         # Required: Get from https://perplexity.ai
+
+# Docker Configuration
+DOCKER_GROUP="testproj2"      # Used for container isolation
+DOCKER_NETWORK="testproj2"    # Used for container networking
+
+# Backup Configuration
+BACKUP_TARGET=               # Required: Path to your secure backup location
+#                            # Example: /Users/you/Library/Mobile Documents/com~apple~CloudDocs/repos/testproj2_Archive
+
+# SSH Configuration
+SSH_KEY_PATH=~/.ssh/testproj2_key  # Path to team SSH key
+
+
+# PM_GUARDIAN Configuration
+PM_GUARDIAN_DISPLAY=Pm Guardian
+PM_GUARDIAN_EMAIL=testuser+testproj2-pm_guardian@example.com
+PM_GUARDIAN_SLACK=@testproj2-pm_guardian
+PM_GUARDIAN_GITHUB=testproj2-pm_guardian
+PM_GUARDIAN_BOT=testproj2_pm_guardian_bot
+
+# PYTHON_CODER Configuration
+PYTHON_CODER_DISPLAY=Python Coder
+PYTHON_CODER_EMAIL=testuser+testproj2-python_coder@example.com
+PYTHON_CODER_SLACK=@testproj2-python_coder
+PYTHON_CODER_GITHUB=testproj2-python_coder
+PYTHON_CODER_BOT=testproj2_python_coder_bot

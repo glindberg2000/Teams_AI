@@ -1,0 +1,42 @@
+{
+    "name": "test_project-db_guardian",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "."
+    },
+    "features": {},
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+        "source=${localWorkspaceFolder}/payload,target=/workspaces/project/payload,type=bind,consistency=cached"
+    ],
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/project,type=bind,consistency=cached",
+    "workspaceFolder": "/workspaces/project",
+    "postCreateCommand": "bash .devcontainer/scripts/setup_workspace.sh",
+    "postStartCommand": [
+        "bash .devcontainer/scripts/refresh_configs.sh",
+        "cd /workspaces/project/payload && ./restore_payload.sh"
+    ],
+    "remoteEnv": {
+        "LEDGERFLOW_REPO_URL": "${localEnv:LEDGERFLOW_REPO_URL}",
+        "PROJECT_ROOT": "/workspaces/project"
+    },
+    "runArgs": [
+        "--name",
+        "windsurf-test_project-db_guardian",
+        "--restart",
+        "unless-stopped"
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "codeium.windsurf"
+            ]
+        }
+    },
+    "init": true,
+    "remoteUser": "root",
+    "overrideCommand": false
+}

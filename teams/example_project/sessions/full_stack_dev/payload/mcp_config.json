@@ -1,0 +1,58 @@
+{
+    "mcpServers": {
+        "puppeteer": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-puppeteer"
+            ],
+            "env": {}
+        },
+        "github": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-github"
+            ],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_example2"
+            }
+        },
+        "slack": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-slack"
+            ],
+            "env": {
+                "SLACK_BOT_TOKEN": "xoxb-example-token-2",
+                "SLACK_TEAM_ID": "T08PAUH7J87         # Your Slack workspace ID"
+            }
+        },
+        "context7": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mcp@latest"
+            ]
+        },
+        "taskmaster-ai": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "--package=task-master-ai",
+                "task-master-ai"
+            ],
+            "env": {
+                "ANTHROPIC_API_KEY": "sk-ant-example123",
+                "PERPLEXITY_API_KEY": "pplx-example123",
+                "MODEL": "claude-3-7-sonnet-20250219",
+                "PERPLEXITY_MODEL": "sonar-pro",
+                "MAX_TOKENS": "64000",
+                "TEMPERATURE": "0.2",
+                "DEFAULT_SUBTASKS": "5",
+                "DEFAULT_PRIORITY": "medium"
+            }
+        }
+    }
+}

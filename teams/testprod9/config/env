@@ -1,0 +1,43 @@
+# Environment configuration for testprod9 team
+# WARNING: Never commit this file to git!
+# Store a copy in your secure storage (iCloud, 1Password, etc.)
+
+# Team Configuration
+PROJECT_NAME=testprod9
+TEAM_ID=testprod9  # Used for container naming
+
+# Git Configuration
+GIT_USER_NAME="me"
+GIT_USER_EMAIL="me+testprod9@gmail.com"
+
+# GitHub Configuration
+GITHUB_PERSONAL_ACCESS_TOKEN=  # Required: Create at https://github.com/settings/tokens
+#                             # Needs: repo, workflow, read:org
+
+# Slack Configuration
+SLACK_BOT_TOKEN=              # Required: Create at https://api.slack.com/apps
+SLACK_TEAM_ID=               # Required: Get from Slack workspace URL
+SLACK_CHANNEL="testprod9"     # Main team channel
+
+# AI Integration
+ANTHROPIC_API_KEY=           # Required: Get from https://console.anthropic.com
+PERPLEXITY_API_KEY=         # Required: Get from https://perplexity.ai
+
+# Docker Configuration
+DOCKER_GROUP="testprod9"      # Used for container isolation
+DOCKER_NETWORK="testprod9"    # Used for container networking
+
+# Backup Configuration
+BACKUP_TARGET=               # Required: Path to your secure backup location
+#                            # Example: /Users/you/Library/Mobile Documents/com~apple~CloudDocs/repos/testprod9_Archive
+
+# SSH Configuration
+SSH_KEY_PATH=~/.ssh/testprod9_key  # Path to team SSH key
+
+
+# PM_GUARDIAN Configuration
+PM_GUARDIAN_DISPLAY=Pm Guardian
+PM_GUARDIAN_EMAIL=me+testprod9-pm_guardian@gmail.com
+PM_GUARDIAN_SLACK=@testprod9-pm_guardian
+PM_GUARDIAN_GITHUB=testprod9-pm_guardian
+PM_GUARDIAN_BOT=testprod9_pm_guardian_bot
