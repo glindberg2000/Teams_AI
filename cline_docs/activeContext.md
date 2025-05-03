@@ -10,7 +10,11 @@
   - Better error messages and troubleshooting guidance
 - Updated README.md with clear workflow descriptions and directory structure
 - Created a domain-centric repository organization plan with teams as primary units
-- Developed scripts to implement the reorganization (organize_repo.py, update_scaffold_team.py)
+- Developed comprehensive reorganization tools and documentation:
+  - Created organize_repo.py for handling file moves and directory structure changes
+  - Developed update_scaffold_team.py to update path references in Python code
+  - Created update_shell_scripts.py to fix path references in shell scripts
+  - Added detailed MIGRATION_GUIDE.md for users
 - Created a separate 'reorg' branch for testing the reorganization before implementation
 
 ## Recent Changes
@@ -21,35 +25,33 @@
 - Added a directory structure diagram to the README for better visualization
 - Modified organize_repo.py to implement a domain-centric approach with teams/{project}/sessions/{role}
 - Updated update_scaffold_team.py to handle the new directory structure
-- Created git branch 'reorg' for the reorganization work to isolate changes
+- Created specialized update_shell_scripts.py with improved regex patterns for handling shell script path updates
+- Added diffing capabilities to show precise changes being made to files
+- Created a comprehensive migration guide with before/after directory structure comparisons
+- Added backup capabilities to all update scripts to ensure no data loss
 
 ## Next Steps
-1. **Complete Repository Reorganization**:
-   - Test the reorganization scripts in dry-run mode on a copy of the repository
-   - Verify all path references are updated correctly
-   - Handle edge cases (missing directories, unusual file names)
-   - Update any import statements or path references in the code
-   - Consider creating a detailed migration guide for users
+1. **Final Testing of Reorganization**:
+   - Test all reorganization scripts in dry-run mode on a copy of the repository
+   - Verify path updates in Python and shell scripts
+   - Create a test environment to validate the new structure with real usage
 
-2. **Improve SSH Key Management**:
-   - Add better validation for SSH key paths
-   - Implement more robust error handling
-   - Consider adding a backup feature for generated keys
+2. **Implementation of Reorganization**:
+   - Once fully tested, run the reorganization on the reorg branch
+   - Test the reorganized structure thoroughly (create teams, sessions, etc.)
+   - Fix any remaining path issues or edge cases
+   - Merge the reorg branch to main when validated
 
-3. **Enhance Error Handling**:
-   - Add more descriptive error messages
-   - Implement logging for better debugging
-   - Add validation for configuration files
+3. **Documentation Updates**:
+   - Update project documentation to reflect the new structure
+   - Provide examples using the new paths
+   - Create a quick-reference guide for common commands with new paths
+   - Add troubleshooting section for common migration issues
 
-4. **Add Testing**:
-   - Create unit tests for critical functions
-   - Add integration tests for the full workflow
-   - Create example test cases for different team configurations
-
-5. **Documentation Improvements**:
-   - Add more examples of team configurations
-   - Create troubleshooting guide with common issues
-   - Add diagrams for visualization of components and workflows
+4. **Cleanup of Old Structure**:
+   - Remove deprecated scripts and directories
+   - Clean up any leftover configuration files
+   - Handle remaining test environments
 
 ## Implementation Decisions
 - **Domain-Centric Organization**: Changed from a flat structure to a domain-centric approach with teams as the primary organizational unit
@@ -57,22 +59,28 @@
 - **Tools Directory**: Centralized command-line tools in a single directory
 - **Role Templates**: Kept roles directory separate to maintain clear separation of concerns
 - **Separate Branch**: Created 'reorg' branch to isolate reorganization changes for testing
+- **Comprehensive Migration Tools**: Created specialized tools for each aspect of the migration:
+  - organize_repo.py: Handles directory restructuring
+  - update_scaffold_team.py: Updates Python code paths
+  - update_shell_scripts.py: Updates shell script paths
+- **Automatic Backups**: All update tools create backups of modified files for safety
+- **Verbose Logging**: Added detailed logging options to all scripts for transparency
 
 ## Issues to Watch
-- Path references in scaffold_team.py and team_cli.py need careful updating
+- Path references in shell scripts that use variables (e.g., ${SESSION_NAME})
 - Environment variable naming conventions must remain consistent
 - SSH key paths may need adjustment in the new structure
 - Documentation inheritance paths will change in the new structure
+- Container configuration that references specific paths
 
 ## Current Understanding
-- scaffold_team.py generates .env.{project} files with required configuration
-- The .env files follow a specific naming convention: ROLE_UPPER_SLACK_TOKEN
-- team-cli.py extracts session names by parsing these variables (e.g., PM_GUARDIAN_SLACK_TOKEN → pm_guardian)
-- team-cli.py creates isolated agent sessions in sessions/{project}/{agent}/
-- Documentation is inherited through a hierarchical structure (global → project → role)
-- Each agent gets its own SSH key, documentation, and environment vars
-- The typical workflow is:
-  1. Generate configuration with scaffold_team.py
-  2. Fill in API keys in .env.{project}
-  3. Create sessions with team-cli.py create-crew
-  4. Launch containers for each agent 
+- The repository would benefit from a more organized structure with teams as the primary unit
+- Current flat session structure makes it hard to manage multiple teams
+- The new structure provides better separation of concerns:
+  - teams/ contains all team-specific content (config, sessions)
+  - tools/ contains all command-line tools
+  - roles/ contains role templates and documentation
+  - templates/ contains system-wide templates
+- The reorganization can be implemented with specialized scripts without manual file copying
+- The reorganization should be done in a separate branch and tested thoroughly before merging to main
+- Shell scripts require careful path updates using regex patterns to handle various script styles 
