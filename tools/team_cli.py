@@ -336,6 +336,29 @@ def create_session(args):
 
     # Write the .env file with consistent formatting
     os.makedirs(os.path.dirname(env_path), exist_ok=True)
+
+    # First, resolve any template variables in the env_vars
+    resolved_env_vars = {}
+    for k, v in env_vars.items():
+        if isinstance(v, str) and "${" in v:
+            # Replace template variables with their values
+            resolved_value = v
+            for var_name, var_value in env_vars.items():
+                if isinstance(var_value, str) and "#" in var_value:
+                    # Strip comments from the value
+                    var_value = var_value.split("#")[0].strip()
+
+                placeholder = f"${{{var_name}}}"
+                if placeholder in resolved_value:
+                    resolved_value = resolved_value.replace(placeholder, str(var_value))
+            resolved_env_vars[k] = resolved_value
+        else:
+            # Strip comments if present
+            if isinstance(v, str) and "#" in v:
+                v = v.split("#")[0].strip()
+            resolved_env_vars[k] = v
+
+    # Use the resolved variables for writing the file
     with open(env_path, "w") as f:
         # Write Task Master variables first
         task_master_vars = [
@@ -351,11 +374,11 @@ def create_session(args):
             "LOG_LEVEL",
         ]
         for k in task_master_vars:
-            if k in env_vars:
-                f.write(f"{k}={env_vars[k]}\n")
+            if k in resolved_env_vars:
+                f.write(f"{k}={resolved_env_vars[k]}\n")
 
         # Write remaining variables
-        for k, v in env_vars.items():
+        for k, v in resolved_env_vars.items():
             if k not in task_master_vars:
                 f.write(f"{k}={v}\n")
 
@@ -373,7 +396,13 @@ def create_session(args):
         # Replace all ${VAR} with values from env_vars, preserving structure
         def replace_var(match):
             var_name = match.group(1)
-            return env_vars.get(var_name, "")  # Return empty string for missing vars
+            value = env_vars.get(var_name, "")  # Return empty string for missing vars
+
+            # Strip comments from value if it's a string
+            if isinstance(value, str) and "#" in value:
+                value = value.split("#")[0].strip()
+
+            return value
 
         config_str = re.sub(r"\${([^}]+)}", replace_var, template)
 
@@ -765,6 +794,11 @@ def create_crew(args):
             include_role_docs=include_role_docs,
             prompt_all=False,
             all_env=[
+                # Add team-level variables first
+                f"TEAM_NAME={team_env.get('TEAM_NAME', project_name)}",
+                f"TEAM_DESCRIPTION={team_env.get('TEAM_DESCRIPTION', project_name + ' team')}",
+                f"PROJECT_NAME={project_name}",
+                # Session-specific variables
                 f"GIT_USER_NAME={session_name}",
                 f"GIT_USER_EMAIL={config['email']}",
                 f"SLACK_BOT_TOKEN={config['slack_token']}",
@@ -774,14 +808,24 @@ def create_crew(args):
                 # Add base configuration with actual values from team env
                 f"ANTHROPIC_API_KEY={team_env.get('ANTHROPIC_API_KEY', '')}",
                 f"PERPLEXITY_API_KEY={team_env.get('PERPLEXITY_API_KEY', '')}",
-                "MODEL=claude-3-sonnet-20240229",
-                "PERPLEXITY_MODEL=sonar-medium-online",
-                "MAX_TOKENS=64000",
-                "TEMPERATURE=0.2",
-                "DEBUG=false",
-                "LOG_LEVEL=info",
-                "DEFAULT_SUBTASKS=5",
-                "DEFAULT_PRIORITY=medium",
+                f"MODEL={team_env.get('MODEL', 'claude-3-sonnet-20240229')}",
+                f"PERPLEXITY_MODEL={team_env.get('PERPLEXITY_MODEL', 'sonar-medium-online')}",
+                f"MAX_TOKENS={team_env.get('MAX_TOKENS', '64000')}",
+                f"TEMPERATURE={team_env.get('TEMPERATURE', '0.2')}",
+                f"DEFAULT_SUBTASKS={team_env.get('DEFAULT_SUBTASKS', '5')}",
+                f"DEFAULT_PRIORITY={team_env.get('DEFAULT_PRIORITY', 'medium')}",
+                f"DEBUG={team_env.get('DEBUG', 'false')}",
+                f"LOG_LEVEL={team_env.get('LOG_LEVEL', 'info')}",
+                # Include any role-specific variables that are in the team env
+                *[
+                    f"{k}={v}"
+                    for k, v in team_env.items()
+                    if k.startswith(session_name.upper())
+                    or any(
+                        k.startswith(part.upper() + "_")
+                        for part in session_name.upper().split("_")
+                    )
+                ],
             ],
         )
 
