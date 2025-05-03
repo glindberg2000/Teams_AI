@@ -6,7 +6,7 @@ A secure, isolated environment for AI agent development and collaboration, provi
 
 LedgerFlow AI Team provides two primary tools for managing AI agent environments:
 
-1. **scaffold_team.py**: Generates standardized team configuration files (.env.{project}) and setup checklists.
+1. **scaffold_team.py**: Generates standardized team configuration files (teams/{project}/config/env) and setup checklists.
 2. **team-cli.py**: Creates isolated agent sessions based on the configuration.
 
 ## Key Features
@@ -17,6 +17,7 @@ LedgerFlow AI Team provides two primary tools for managing AI agent environments
 - **Role-Based Configuration**: Role-specific templates and documentation
 - **Automated Setup**: Scripted creation of team environments
 
+## Directory Structure
 ## Directory Structure
 
 ```
@@ -67,16 +68,16 @@ Use `scaffold_team.py` to generate team configuration files:
 
 ```bash
 # Interactive mode (recommended for first-time setup)
-python scaffold_team.py
+python tools/scaffold_team.py
 
 # Non-interactive mode with CLI flags
-python scaffold_team.py --project testproject --prefix user
+python tools/scaffold_team.py --project testproject --prefix user
 ```
 
 This generates:
-- Environment file (.env.{project})
-- Environment template (teams/{project}/env.template)
-- Setup checklist (teams/{project}/checklist.md)
+- Environment file (teams/{project}/config/env)
+- Environment template (teams/{project}/config/env.template)
+- Setup checklist (teams/{project}/config/checklist.md)
 
 ### 3. Create Agent Sessions
 
@@ -84,13 +85,13 @@ Use `team_cli.py` to create agent sessions:
 
 ```bash
 # Create a single agent session with an automatically generated SSH key
-python team-cli/team_cli.py create-session --project testproject --name agent1 --role python_coder --generate-ssh-key
+python tools/team_cli.py create-session --project testproject --name agent1 --role python_coder --generate-ssh-key
 
 # Create a single agent session with an existing SSH key
-python team-cli/team_cli.py create-session --project testproject --name agent2 --role pm_guardian --ssh-key ~/.ssh/existing_key
+python tools/team_cli.py create-session --project testproject --name agent2 --role pm_guardian --ssh-key ~/.ssh/existing_key
 
 # Create all agent sessions defined in the environment file
-python team-cli/team_cli.py create-crew --env-file .env.testproject
+python tools/team_cli.py create-crew --env-file .env.testproject
 ```
 
 ### 4. Access Agent Sessions
