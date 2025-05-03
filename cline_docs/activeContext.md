@@ -1,5 +1,25 @@
 # Active Context
 
+## What I'm working on now
+- Completed a full end-to-end test of the team scaffolding and session generation workflow using only scaffold_team.py and team_cli.py
+- Verified that .env and mcp_config.json are generated correctly (no comments, all template variables resolved)
+- Ensured SSH keys are unique per session
+- Confirmed documentation inheritance (global, role) is automatic and correct
+- Wrote and committed a markdown verification report for PM review (REPOSITORY_E2E_VERIFICATION.md)
+- Staged and committed all relevant changes (team_cli.py, docs, env files)
+
+## Recent changes
+- Fixed template variable and comment handling in team_cli.py
+- Updated .env and mcp_config.json generation logic
+- Enhanced documentation in docs/global and docs/role
+- Added E2E verification report
+- Committed all changes
+
+## Next steps
+- Review .gitignore for any edge cases (sessions/*/payload/.ssh/ is not currently ignored, should be fixed)
+- Discuss and address minor cleanup and output issues as noticed
+- Finalize for PM sign-off
+
 ## Current Work
 - Successfully debugged and improved scaffold_team.py to generate team-cli compatible .env files
 - Fixed variable naming patterns to match team-cli's session extraction logic (ROLE_UPPER_SLACK_TOKEN format)
