@@ -1,2 +1,0 @@
-# Team Overview
-Sample team.
