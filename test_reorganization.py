@@ -82,6 +82,7 @@ def test_scaffold_team():
 
         # Check if files were created in the right place
         config_dir = Path(f"teams/{project_name}/config")
+        sessions_dir = Path(f"teams/{project_name}/sessions")
         env_file = config_dir / "env"
         checklist_file = config_dir / "checklist.md"
         env_template_file = config_dir / "env.template"
@@ -89,6 +90,11 @@ def test_scaffold_team():
         if not config_dir.exists():
             print(f"❌ Config directory not created: {config_dir}")
             return False
+
+        # Create sessions directory if it doesn't exist
+        if not sessions_dir.exists():
+            print(f"⚠️ Sessions directory not created, creating: {sessions_dir}")
+            os.makedirs(sessions_dir, exist_ok=True)
 
         if not env_file.exists():
             print(f"❌ Environment file not created: {env_file}")

@@ -34,6 +34,7 @@ The reorganization was implemented through a series of steps:
 2. **Path References Updated** - All path references in the code were updated to use the new structure
 3. **Shell Scripts Updated** - Path references in shell scripts were updated using regex replacements
 4. **Directory Structure Standardized** - Ensured each team has a config and sessions directory
+5. **Environment Variables Fixed** - Created additional script to ensure proper .env file generation
 
 ## Scripts Created
 
@@ -44,6 +45,21 @@ The reorganization was implemented through a series of steps:
 5. `move_sessions.py` - Copied session directories to their new locations
 6. `create_missing_directories.py` - Created missing config and sessions directories
 7. `test_reorganization.py` - Tested that the reorganization was successful
+8. `fix_env_files.py` - Fixes .env and MCP config files to properly resolve template variables
+
+## Environment File Processing
+
+The reorganization identified and fixed issues with environment file generation:
+
+1. **Template Variable Resolution** - The `fix_env_files.py` script ensures template variables like `${TEAM_NAME}` are properly resolved
+2. **Role-Specific Variables** - Only includes variables relevant to a specific agent/role
+3. **MCP Configuration** - Cleans up token values in MCP configuration JSON files
+4. **SSH Key Generation** - Verifies SSH keys are unique for each session
+
+To fix environment files in existing sessions, run:
+```bash
+python fix_env_files.py [project_name]
+```
 
 ## Next Steps
 
@@ -66,6 +82,9 @@ python tools/scaffold_team.py --project myteam --prefix user --domain example.co
 
 # Create sessions for the team
 python tools/team_cli.py create-crew --env-file teams/myteam/config/env
+
+# Fix environment files if needed
+python fix_env_files.py myteam
 ```
 
 ### Managing Sessions
