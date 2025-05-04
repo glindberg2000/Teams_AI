@@ -43,6 +43,7 @@ import sys
 from pathlib import Path
 import yaml
 import datetime
+import json
 
 # Constants
 DEFAULT_ROLES = ["pm_guardian", "python_coder", "reviewer"]
@@ -170,7 +171,7 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         f"TEAM_NAME={project}",
         f"TEAM_DESCRIPTION={project} team",
         f"PROJECT_NAME={project}",
-        f"LEDGERFLOW_EMAIL_PREFIX={prefix}",
+        f"EMAIL_PREFIX={prefix}",
         "",
         "# Documentation Configuration",
         "INCLUDE_GLOBAL_DOCS=true",
@@ -180,10 +181,7 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         "# Required API Keys and Tokens",
         "ANTHROPIC_API_KEY=  # Required: Get from https://console.anthropic.com",
         "PERPLEXITY_API_KEY=  # Optional: Get from https://perplexity.ai",
-        "GITHUB_PERSONAL_ACCESS_TOKEN=  # Required: Create at https://github.com/settings/tokens",
-        "SLACK_BOT_TOKEN=  # Required: Create at https://api.slack.com/apps",
         "SLACK_TEAM_ID=  # Required: Get from Slack workspace settings",
-        "SLACK_WORKSPACE_ID=  # Same as SLACK_TEAM_ID",
         "",
         "# Task Master MCP Configuration",
         "MODEL=claude-3-sonnet-20240229",
@@ -194,10 +192,6 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         "DEFAULT_PRIORITY=medium",
         "DEBUG=false",
         "LOG_LEVEL=info",
-        "",
-        "# Git Configuration",
-        f'GIT_USER_NAME="{prefix}"',
-        f'GIT_USER_EMAIL="{prefix}+{project}@{domain}"',
         "",
         "# Docker Configuration",
         "DOCKER_GROUP=1000  # Default group ID for Docker",
@@ -214,16 +208,12 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
 
     # Add role-specific configurations
     for role in roles:
-        # CRITICAL: For team-cli parsing, we must follow a specific format:
-        # It extracts session names by looking at environment variables like:
-        # PM_GUARDIAN_SLACK_TOKEN -> ["PM", "GUARDIAN", "SLACK_TOKEN"]
-        # Then it takes parts[:-2] (["PM", "GUARDIAN"]) and joins with "_" to get "pm_guardian"
-
-        # Convert role to uppercase for environment variables
         role_upper = role.upper()
         role_id = role.lower()
         role_display = capitalize_first_letters(role_id)
         project_display = capitalize_first_letters(project)
+        role_github = f"{project}-{role_id.replace('_', '-')}"
+        role_display_var = f"{project_display} {' '.join([part.upper() for part in role_id.split('_')])}"
 
         content.extend(
             [
@@ -232,8 +222,8 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
                 f"{role_upper}_SLACK_TOKEN=  # Required: Bot token for this role",
                 f"{role_upper}_GITHUB_TOKEN=  # Required: GitHub PAT for this role",
                 f"{role_upper}_BOT={project}_{role_id}_bot",
-                f"{role_upper}_GITHUB={project}-{role_id}",
-                f"{role_upper}_DISPLAY={project_display} {role_display}",
+                f"{role_upper}_GITHUB={role_github}",
+                f"{role_upper}_DISPLAY={role_display_var}",
                 "",
             ]
         )
@@ -285,7 +275,7 @@ def generate_env_template(project, roles, dry_run=False):
         content.extend(
             [
                 f"# {role_display} Configuration",
-                f"{role_upper}_EMAIL=${{LEDGERFLOW_EMAIL_PREFIX}}+${{TEAM_NAME}}-{role_id}@${{DOMAIN}}",
+                f"{role_upper}_EMAIL=${{EMAIL_PREFIX}}+${{TEAM_NAME}}-{role_id}@${{DOMAIN}}",
                 f"{role_upper}_SLACK_TOKEN=  # Required: Bot token for this role",
                 f"{role_upper}_GITHUB_TOKEN=  # Required: GitHub PAT for this role",
                 f"{role_upper}_BOT=${{TEAM_NAME}}_{role_id}_bot",
@@ -353,15 +343,11 @@ def generate_checklist(project, roles, dry_run=False):
         role_upper = role.upper()
         role_id = role.lower()
         role_display = capitalize_first_letters(role_id)
-
-        content.extend(
-            [
-                f"#### {role_display}",
-                "",
-                f"- [ ] **{role_upper}_SLACK_TOKEN**: Unique Slack bot token for this role",
-                f"- [ ] **{role_upper}_GITHUB_TOKEN**: Unique GitHub PAT for this role",
-                "",
-            ]
+        content.append(
+            f"- [ ] **{role_upper}_SLACK_TOKEN**: Unique Slack bot token for this role"
+        )
+        content.append(
+            f"- [ ] **{role_upper}_GITHUB_TOKEN**: Unique GitHub PAT for this role"
         )
 
     content.extend(
@@ -380,6 +366,12 @@ def generate_checklist(project, roles, dry_run=False):
         ]
     )
 
+    for role in roles:
+        role_display = capitalize_first_letters(role)
+        content.append(
+            f"- [ ] Create Slackbot for {role_display} using slackbot_manifest_{role}.json in the config directory."
+        )
+
     if dry_run:
         return None
 
@@ -394,6 +386,46 @@ def generate_checklist(project, roles, dry_run=False):
 
     print(f"Created {checklist_file}")
     return checklist_file
+
+
+def generate_slackbot_manifest(display_name):
+    """
+    Generate a Slackbot manifest JSON for the given role, using the correct Slack schema (features.bot_user).
+    """
+    return {
+        "display_information": {"name": display_name},
+        "settings": {
+            "org_deploy_enabled": False,
+            "socket_mode_enabled": False,
+            "is_hosted": False,
+            "token_rotation_enabled": False,
+        },
+        "features": {"bot_user": {"display_name": display_name, "always_online": True}},
+        "oauth_config": {
+            "scopes": {
+                "bot": [
+                    "app_mentions:read",
+                    "channels:history",
+                    "channels:join",
+                    "channels:manage",
+                    "channels:read",
+                    "chat:write",
+                    "groups:history",
+                    "groups:read",
+                    "im:history",
+                    "im:read",
+                    "im:write",
+                    "mpim:history",
+                    "mpim:read",
+                    "users:read",
+                    "users:read.email",
+                    "users:write",
+                    "files:read",
+                    "files:write",
+                ]
+            }
+        },
+    }
 
 
 def main():
@@ -505,6 +537,13 @@ def main():
         print(
             f"3. Follow the checklist at {checklist if not args.dry_run else 'teams/' + project + '/config/checklist.md'}"
         )
+
+        # For each role, generate the Slackbot manifest in the config directory
+        for role in roles:
+            display_name = capitalize_first_letters(role)
+            slackbot_manifest = generate_slackbot_manifest(display_name)
+            with open(config_dir / f"slackbot_manifest_{role}.json", "w") as f:
+                json.dump(slackbot_manifest, f, indent=2)
 
     except Exception as e:
         print(f"Error creating files: {e}")
