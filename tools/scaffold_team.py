@@ -45,13 +45,7 @@ import yaml
 
 # Constants
 DEFAULT_ROLES = ["pm_guardian", "python_coder", "reviewer"]
-VALID_ROLES = [
-    "pm_guardian",
-    "python_coder",
-    "full_stack_dev",
-    "db_guardian",
-    "reviewer",
-]
+ROLES_DIR = Path("roles")
 
 
 def capitalize_first_letters(s):
@@ -112,9 +106,24 @@ def interactive_input():
     return project, prefix, domain, roles
 
 
+def get_valid_roles():
+    """
+    Dynamically list valid roles by reading the roles directory, excluding _templates and example_role.
+    Returns:
+        list: List of valid role names
+    """
+    if not ROLES_DIR.exists():
+        return []
+    return [
+        d.name
+        for d in ROLES_DIR.iterdir()
+        if d.is_dir() and d.name not in ["_templates", "example_role"]
+    ]
+
+
 def validate_roles(roles):
     """
-    Validate roles against the list of valid roles.
+    Validate roles against the list of valid roles (from roles directory).
 
     Args:
         roles (list): List of role names to validate
@@ -122,10 +131,11 @@ def validate_roles(roles):
     Returns:
         bool: True if all roles are valid, False otherwise
     """
-    invalid_roles = [r for r in roles if r not in VALID_ROLES]
+    valid_roles = get_valid_roles()
+    invalid_roles = [r for r in roles if r not in valid_roles]
     if invalid_roles:
         print(f"Warning: Invalid roles: {', '.join(invalid_roles)}")
-        print(f"Valid roles are: {', '.join(VALID_ROLES)}")
+        print(f"Valid roles are: {', '.join(valid_roles)}")
         return False
     return True
 

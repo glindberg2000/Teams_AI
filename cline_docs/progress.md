@@ -129,4 +129,7 @@ LedgerFlow_AI_Team/
 1. Update all documentation to reflect the new structure
 2. Create comprehensive examples and tutorials
 3. Improve user experience and CLI interfaces
-4. Add metrics and monitoring for team health 
+4. Add metrics and monitoring for team health
+
+## TODOs
+- Refactor session .env file generation so that each session only includes its own role's secrets and global/shared values (not secrets for other team members). This will improve security and clarity. (Planned) 
