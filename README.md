@@ -86,6 +86,9 @@ python tools/team_cli.py create-crew --env-file teams/myteam/config/env
 - **Project/Framework Docs:** See `cline_docs/` for migration guides, advanced usage, and verification reports. *These are never inherited by agent containers.*
 - **Task Master:** See `cline_docs/README-task-master.md` for advanced AI-driven task management.
 - **Generated Agent Docs:** See `docs/` for global, project, and role documentation inherited by agent containers.
+- **Team Manager Role:** See [`cline_docs/TEAM_MANAGER_PROMPT.md`](cline_docs/TEAM_MANAGER_PROMPT.md) for the canonical Team Manager (DevOps) prompt and guide. **Any AI or human can use this to assume full team management and DevOps responsibilities, even after a memory reset.**
+
+> Only up-to-date reports in `cline_docs/reports/` are relevant. Outdated or legacy reports have been removed to avoid confusion.
 
 ## Security & Best Practices
 - **No secrets in git:** All sensitive data is in `teams/` (gitignored).
