@@ -4,10 +4,7 @@ A secure, isolated environment for AI agent development and collaboration, provi
 
 ## Overview
 
-LedgerFlow AI Team provides two primary tools for managing AI agent environments:
-
-1. **scaffold_team.py**: Generates standardized team configuration files (teams/{project}/config/env) and setup checklists.
-2. **team-cli.py**: Creates isolated agent sessions based on the configuration.
+LedgerFlow AI Team provides a robust, reproducible workflow for creating, configuring, and managing teams of AI agents. The system is designed for both human and AI users, with a focus on security, modularity, and documentation.
 
 ## Key Features
 
@@ -16,44 +13,41 @@ LedgerFlow AI Team provides two primary tools for managing AI agent environments
 - **Secure Secret Management**: No sensitive data in Git repository
 - **Role-Based Configuration**: Role-specific templates and documentation
 - **Automated Setup**: Scripted creation of team environments
+- **Task Master Integration**: Advanced task management for AI-driven workflows (see cline_docs/README-task-master.md)
 
-## Directory Structure
 ## Directory Structure
 
 ```
 LedgerFlow_AI_Team/
-├── teams/                       # All team-related content in one place
-│   ├── _templates/              # Shared templates for all teams
-│   ├── _shared/                 # Shared resources across teams
-│   ├── {team1}/                 # Everything for team1
-│   │   ├── config/              # Team configuration
-│   │   │   ├── env              # Environment file (was .env.team1)
-│   │   │   ├── checklist.md     # Setup instructions
-│   │   │   └── manifest.json    # Team composition details
-│   │   └── sessions/            # Team sessions
-│   │       ├── pm_guardian/     # Session for this role
-│   │       └── python_coder/    # Session for this role
-│   └── {team2}/                 # Another team's config and sessions
-├── roles/                       # Role templates and documentation
-│   ├── _templates/              # Shared templates for all roles
-│   ├── pm_guardian/             # PM Guardian role definition
-│   ├── python_coder/            # Python Coder role definition
-│   └── reviewer/                # Reviewer role definition
-├── docs/                        # Global documentation
-│   ├── global/                  # Global docs for all teams
-│   └── projects/                # Docs specific to projects
-├── tools/                       # Command-line tools
-│   ├── scaffold_team.py         # Team configuration generator
-│   ├── team_cli.py              # Session management tool
-│   └── utils/                   # Helper utilities
-├── templates/                   # System-wide templates
-│   ├── devcontainer/            # Base container configuration
-│   └── scripts/                 # Helper scripts
-├── README.md
-└── pyproject.toml
+├── cline_docs/                # Project-level docs, migration guides, reports, advanced usage
+│   ├── MIGRATION_GUIDE.md
+│   ├── README-task-master.md
+│   └── reports/
+├── docs/                      # Generated/inherited agent docs (for containers/sessions)
+│   ├── global/
+│   ├── projects/
+│   └── role/
+├── roles/                     # Role templates and docs
+│   ├── _templates/
+│   ├── pm_guardian/
+│   ├── python_coder/
+│   └── reviewer/
+├── teams/                     # User-generated team configs and sessions (gitignored)
+├── templates/                 # System-wide templates (devcontainer, scripts)
+├── tools/                     # Official CLI tools
+│   ├── scaffold_team.py
+│   ├── team_cli.py
+│   └── utils/
+├── scripts/                   # Deprecated/legacy scripts (in scripts/deprecated/)
+├── .cursor/                   # Cursor AI config/rules
+├── .gitignore
+├── README.md                  # Main entrypoint for all users
+└── ... (other config files)
 ```
 
-## Getting Started
+> **Note:** `cline_docs/` is *never* inherited or copied into agent containers or sessions. Only `docs/` and `roles/` are used for agent/session documentation. See the now-archived [Documentation Organization Proposal](cline_docs/reports/DOCUMENTATION_ORGANIZATION_PROPOSAL.md) for historical context and verification of this separation.
+
+## Quickstart: Official Workflow
 
 ### 1. Clone the Repository
 
@@ -62,85 +56,52 @@ git clone https://github.com/your-org/LedgerFlow_AI_Team.git
 cd LedgerFlow_AI_Team
 ```
 
-### 2. Create a Team Configuration
-
-Use `scaffold_team.py` to generate team configuration files:
+### 2. Scaffold a New Team
 
 ```bash
-# Interactive mode (recommended for first-time setup)
-python tools/scaffold_team.py
-
-# Non-interactive mode with CLI flags
-python tools/scaffold_team.py --project testproject --prefix user
+python tools/scaffold_team.py --project myteam --prefix user --domain example.com
 ```
+- This creates `teams/myteam/config/env`, `env.template`, and `checklist.md`.
 
-This generates:
-- Environment file (teams/{project}/config/env)
-- Environment template (teams/{project}/config/env.template)
-- Setup checklist (teams/{project}/config/checklist.md)
+### 3. Fill in Environment File
+- Edit `teams/myteam/config/env` with your API keys, tokens, and team details.
+- **Never commit secrets!** The `teams/` directory is gitignored by default.
 
-### 3. Create Agent Sessions
-
-Use `team_cli.py` to create agent sessions:
+### 4. Generate Agent Sessions
 
 ```bash
-# Create a single agent session with an automatically generated SSH key
-python tools/team_cli.py create-session --project testproject --name agent1 --role python_coder --generate-ssh-key
-
-# Create a single agent session with an existing SSH key
-python tools/team_cli.py create-session --project testproject --name agent2 --role pm_guardian --ssh-key ~/.ssh/existing_key
-
-# Create all agent sessions defined in the environment file
-python tools/team_cli.py create-crew --env-file .env.testproject
+python tools/team_cli.py create-crew --env-file teams/myteam/config/env
 ```
+- This creates session folders for each agent role, with:
+  - `.env` file (role-specific)
+  - Unique SSH keypair
+  - Inherited documentation
+  - Devcontainer config and restore script
 
-### 4. Access Agent Sessions
+### 5. Launch and Use Sessions
+- Each session is ready for containerized development or AI agent operation.
+- See the generated `checklist.md` for next steps.
 
-Each agent session is an isolated environment with its own documentation, SSH key, and configuration:
+## Documentation
+- **Project/Framework Docs:** See `cline_docs/` for migration guides, advanced usage, and verification reports. *These are never inherited by agent containers.*
+- **Task Master:** See `cline_docs/README-task-master.md` for advanced AI-driven task management.
+- **Generated Agent Docs:** See `docs/` for global, project, and role documentation inherited by agent containers.
 
-```bash
-cd sessions/testproject/agent1
+## Security & Best Practices
+- **No secrets in git:** All sensitive data is in `teams/` (gitignored).
+- **Unique SSH keys:** Each agent/session gets a unique keypair.
+- **Documentation inheritance:** All sessions inherit up-to-date docs from `docs/`.
+- **Legacy scripts:** Deprecated scripts are in `scripts/deprecated/` for reference only.
 
-# Start the agent's container
-./restore.sh
+## Task Master Integration (Optional)
+- For advanced, AI-driven project management, use the Task Master tool.
+- See `cline_docs/README-task-master.md` for setup and usage.
 
-# Connect to the agent's container using SSH
-ssh -i ~/.ssh/agent1_key agent@localhost -p 2222
-```
-
-## Environment Variable Naming Conventions
-
-To ensure compatibility between `scaffold_team.py` and `team-cli.py`, the following naming conventions are used:
-
-1. Role-specific variables use the format: `ROLE_UPPER_KEY_NAME`
-   - Example: `PM_GUARDIAN_SLACK_TOKEN`, `PYTHON_CODER_GITHUB_TOKEN`
-
-2. Global variables use the format: `PROJECT_KEY_NAME`
-   - Example: `PROJECT_ROOT_URL`, `PROJECT_DATABASE_URL`
-
-These conventions are critical for proper session extraction in `team-cli.py`.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Session extraction fails**: 
-   - Ensure environment variables follow the naming convention `ROLE_UPPER_KEY_NAME`
-   - Check that required keys exist for each role (`_SLACK_TOKEN`, `_ROLE_ARN`, etc.)
-
-2. **SSH key permission issues**:
-   - Run `chmod 600 path/to/key` to set correct permissions on SSH private keys
-
-3. **Container won't start**:
-   - Check Docker is running
-   - Verify port conflicts with `docker ps`
-
-For more information, see the documentation in the `/docs` directory.
+## Migration & History
+- See `cline_docs/MIGRATION_GUIDE.md` for details on the repository reorganization and migration steps.
 
 ## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to this project.
+- Please see the main README and `cline_docs/` for up-to-date contribution guidelines.
 
 ## License
-
 This project is proprietary and confidential. All rights reserved. 
