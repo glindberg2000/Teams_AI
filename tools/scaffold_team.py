@@ -42,6 +42,7 @@ import os
 import sys
 from pathlib import Path
 import yaml
+import datetime
 
 # Constants
 DEFAULT_ROLES = ["pm_guardian", "python_coder", "reviewer"]
@@ -79,6 +80,10 @@ def parse_args():
         "--dry-run", action="store_true", help="Don't create directories"
     )
     parser.add_argument("-f", "--file", help="YAML configuration file")
+    parser.add_argument(
+        "--add-role",
+        help="Append a new role's config block to the env file (does not overwrite others)",
+    )
     return parser.parse_args()
 
 
@@ -402,6 +407,13 @@ def main():
     """
     args = parse_args()
 
+    # Add support for --add-role flag
+    add_role = None
+    for i, arg in enumerate(sys.argv):
+        if arg == "--add-role" and i + 1 < len(sys.argv):
+            add_role = sys.argv[i + 1]
+            break
+
     # Load from YAML file if provided
     if args.file:
         try:
@@ -431,14 +443,57 @@ def main():
         domain = args.domain
         roles = args.roles.split(",") if args.roles else DEFAULT_ROLES
 
-    # Validate roles
-    if not validate_roles(roles):
-        confirm = input("Continue anyway? (y/n): ").strip().lower()
+    config_dir = Path(f"teams/{project}/config")
+    env_file = config_dir / "env"
+
+    # --- Add Role Mode ---
+    if add_role:
+        # Only append the new role's config block
+        valid_roles = get_valid_roles()
+        if add_role not in valid_roles:
+            print(
+                f"Error: Role '{add_role}' not found in roles/. Valid roles: {', '.join(valid_roles)}"
+            )
+            sys.exit(1)
+        if not env_file.exists():
+            print(
+                f"Error: {env_file} does not exist. Run scaffold_team.py normally first."
+            )
+            sys.exit(1)
+        # Generate the config block for the new role
+        role_upper = add_role.upper()
+        role_id = add_role.lower()
+        role_display = capitalize_first_letters(role_id)
+        project_display = capitalize_first_letters(project)
+        block = [
+            f"# {role_display} Configuration",
+            f"{role_upper}_EMAIL={prefix}+{project}-{role_id}@{domain}",
+            f"{role_upper}_SLACK_TOKEN=  # Required: Bot token for this role",
+            f"{role_upper}_GITHUB_TOKEN=  # Required: GitHub PAT for this role",
+            f"{role_upper}_BOT={project}_{role_id}_bot",
+            f"{role_upper}_GITHUB={project}-{role_id}",
+            f"{role_upper}_DISPLAY={project_display} {role_display}",
+            "",
+        ]
+        with open(env_file, "a") as f:
+            f.write("\n" + "\n".join(block))
+        print(f"Appended config block for role '{add_role}' to {env_file}")
+        return
+
+    # --- Normal Mode ---
+    # Warn if env file exists
+    if env_file.exists():
+        confirm = (
+            input(f"Warning: {env_file} already exists. Overwrite? (y/n): ")
+            .strip()
+            .lower()
+        )
         if confirm != "y":
+            print("Aborted.")
             sys.exit(1)
 
+    # Generate files
     try:
-        # Generate files
         env_file = generate_env_file(project, prefix, domain, roles, args.dry_run)
         env_template = generate_env_template(project, roles, args.dry_run)
         checklist = generate_checklist(project, roles, args.dry_run)

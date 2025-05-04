@@ -107,4 +107,31 @@ python tools/team_cli.py create-crew --env-file teams/myteam/config/env
 - Please see the main README and `cline_docs/` for up-to-date contribution guidelines.
 
 ## License
-This project is proprietary and confidential. All rights reserved. 
+This project is proprietary and confidential. All rights reserved.
+
+## Team Configuration & Role Management
+
+### Adding a New Role to an Existing Team (Safe Mode)
+
+- To add a new role to an existing team **without overwriting other roles or team members**:
+
+  ```sh
+  python tools/scaffold_team.py --project <project> --prefix <prefix> --domain <domain> --add-role <role>
+  ```
+  - This will **append** the new role's config block to `teams/<project>/config/env`.
+  - No other roles or team members will be touched.
+  - Live sessions and agent data are never overwritten by default.
+
+### Overwrite Safeguards
+
+- If you run the scaffolder for an existing project (normal mode), you will be **warned and prompted for confirmation** before any config file is overwritten.
+- Example:
+  ```sh
+  python tools/scaffold_team.py --project <project> --prefix <prefix> --domain <domain> --roles pm_guardian,python_coder
+  ```
+  - If `teams/<project>/config/env` exists, you must confirm before it is overwritten.
+
+### Best Practices
+- All operations are strictly within `teams/<project>/` (never the legacy top-level `sessions/` directory).
+- To update or add a role, use the `--add-role` flag for safety.
+- To regenerate the entire team config, use the normal scaffold command, but be aware of the overwrite prompt. 

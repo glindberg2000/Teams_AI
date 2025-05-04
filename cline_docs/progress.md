@@ -27,6 +27,14 @@
 - ⏳ Create a test suite for automated verification
 - ⏳ Add support for more complex team structures
 
+## Completed Enhancements
+- **Scaffolder Safety & Add-Role Workflow (April 29, 2024):**
+  - The scaffolder now warns and requires confirmation before overwriting any existing team config (env file).
+  - The new `--add-role <role>` flag appends a new role's config block to the env file without touching or overwriting other roles or team members.
+  - All operations are strictly within `teams/{project}/` (never the legacy top-level sessions/ directory).
+  - Live sessions and agent data are never overwritten by default.
+  - This enables safe, incremental team updates and robust onboarding for new roles.
+
 ## Proposed Organization Structure
 
 The current project has several organizational challenges:
