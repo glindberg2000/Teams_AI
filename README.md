@@ -134,4 +134,38 @@ This project is proprietary and confidential. All rights reserved.
 ### Best Practices
 - All operations are strictly within `teams/<project>/` (never the legacy top-level `sessions/` directory).
 - To update or add a role, use the `--add-role` flag for safety.
-- To regenerate the entire team config, use the normal scaffold command, but be aware of the overwrite prompt. 
+- To regenerate the entire team config, use the normal scaffold command, but be aware of the overwrite prompt.
+
+## Discord MCP Integration (Permanent)
+
+### Overview
+- Discord is fully supported for all roles and teams via the [mcp-discord](https://github.com/netixc/mcp-discord) bridge.
+- This enables AI agents and workflows to send/read messages, react, and automate Discord tasks.
+
+### Setup Steps
+1. **Create a Discord Bot Application**
+   - Go to the [Discord Developer Portal](https://discord.com/developers/applications).
+   - Create a new application and add a bot.
+   - Save the bot token and client ID.
+2. **Set Permissions and Invite the Bot**
+   - Use the OAuth2 URL Generator to select `bot` and `applications.commands` scopes.
+   - Grant at least `Send Messages` and `View Channels` permissions.
+   - Invite the bot to your server using the generated link.
+3. **Get Channel and Guild IDs**
+   - Enable Developer Mode in Discord.
+   - Right-click your server and channels to copy their IDs.
+4. **Install and Run the MCP Discord Bridge**
+   - Clone [mcp-discord](https://github.com/netixc/mcp-discord).
+   - Install with `pip install -e .` in a Python 3.10+ venv.
+   - Run with `mcp-discord` or configure your MCP/agent to launch it directly.
+5. **Configure MCP**
+   - In `.cursor/mcp.json`, set the `discord` server to use the absolute path to `mcp-discord` and provide the required environment variables.
+
+### Troubleshooting
+- If the bot cannot send/read messages, check permissions and re-invite with the correct scopes.
+- If the MCP cannot find the CLI, use the absolute path.
+- See onboarding checklist for detailed, step-by-step instructions.
+
+### See Also
+- [Onboarding Checklist](teams/ledgerflow/config/checklist.md)
+- [mcp-discord GitHub](https://github.com/netixc/mcp-discord) 

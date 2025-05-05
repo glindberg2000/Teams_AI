@@ -1,24 +1,31 @@
 # Active Context
 
 ## What I'm working on now
-- Completed a full end-to-end test of the team scaffolding and session generation workflow using only scaffold_team.py and team_cli.py
-- Verified that .env and mcp_config.json are generated correctly (no comments, all template variables resolved)
-- Ensured SSH keys are unique per session
-- Confirmed documentation inheritance (global, role) is automatic and correct
-- Wrote and committed a markdown verification report for PM review (REPOSITORY_E2E_VERIFICATION.md)
-- Staged and committed all relevant changes (team_cli.py, docs, env files)
+- Completed a full end-to-end test and verification of the team scaffolding and session generation workflow
+- Updated README.md for clear onboarding and usage (for both humans and AI)
+- Updated cline_docs/README-task-master.md and MIGRATION_GUIDE.md with context and references
+- All legacy, deprecated, and backup files removed
+- All changes committed and pushed to main branch
+- Directory structure and documentation are now clean, discoverable, and ready for onboarding
 
 ## Recent changes
-- Fixed template variable and comment handling in team_cli.py
-- Updated .env and mcp_config.json generation logic
-- Enhanced documentation in docs/global and docs/role
-- Added E2E verification report
-- Committed all changes
+- Merged reorg branch into main after full verification
+- Cleaned up .devcontainer, contrib, and backup files
+- Moved advanced and historical docs to cline_docs/
+- Updated .gitignore to ensure no secrets or generated content are committed
+- Discord MCP integration is now fully operational using the [mcp-discord](https://github.com/netixc/mcp-discord) bridge.
+- The bridge can be run manually (for local testing) or invoked directly by Cursor/MCP if configured with the correct command and environment variables in `.cursor/mcp.json`.
+- Confirmed: Both sending and reading messages work in real time.
+- Human and bot messages are visible to the bridge.
+- Troubleshooting included: fixing config structure, using absolute CLI path, ensuring correct bot permissions, and re-inviting the bot with the right scopes.
 
 ## Next steps
-- Review .gitignore for any edge cases (sessions/*/payload/.ssh/ is not currently ignored, should be fixed)
-- Discuss and address minor cleanup and output issues as noticed
-- Finalize for PM sign-off
+- Propose/document a better long-term documentation and directory organization (see below)
+- Review and update any script references to doc locations if needed
+- Continue onboarding, optimization, and rule improvements as needed
+- Keep Discord setup instructions in all onboarding/checklist docs.
+- Ensure the README and Memory Bank reflect Discord as a first-class integration.
+- Continue to test and automate Discord workflows as needed.
 
 ## Current Work
 - Successfully debugged and improved scaffold_team.py to generate team-cli compatible .env files

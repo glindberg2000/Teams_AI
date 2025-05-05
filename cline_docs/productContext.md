@@ -57,6 +57,14 @@
    - Automated restore scripts
    - Configuration regeneration
 
+## Discord MCP Integration
+
+- Discord is now a first-class communication and automation channel for all roles and teams.
+- Integration is provided by the [mcp-discord](https://github.com/netixc/mcp-discord) bridge, which must be installed and configured.
+- Each role/team must create a Discord bot application, invite it to the server with the correct permissions, and provide the bot token, client ID, and (optionally) guild/server and channel IDs.
+- The integration supports sending and reading messages, reactions, and more, via MCP tools.
+- All setup steps are included in onboarding and checklist docs.
+
 ## Success Criteria
 - Agents can be created with minimal manual configuration
 - All sensitive data is properly secured
