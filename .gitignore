@@ -51,5 +51,11 @@ dev-debug.log
 tasks.json
 tasks/
 
+# Ignore all generated team folders and session payloads
+teams/
+
+# Ignore Cursor MCP config containing secrets
+.cursor/mcp.json
+
 # Ignore all generated team folders
 teams/ 
