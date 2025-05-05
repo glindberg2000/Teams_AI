@@ -44,6 +44,7 @@ from pathlib import Path
 import yaml
 import datetime
 import json
+import shutil
 
 # Constants
 DEFAULT_ROLES = ["pm_guardian", "python_coder", "reviewer"]
@@ -474,6 +475,41 @@ def generate_slackbot_manifest(display_name):
     }
 
 
+def copy_cline_templates_and_rules(project, roles, dry_run=False):
+    """
+    For each role, copy Cline Memory Bank templates, .windsurfrules, and the canonical restore_payload.sh into the session payload directory.
+    """
+    base_templates = Path("roles/_templates/cline_docs")
+    shared_templates = Path("roles/_templates/cline_docs_shared")
+    windsurfrules = Path("roles/_templates/.windsurfrules")
+    restore_script = Path("roles/_templates/restore_payload.sh")
+
+    for role in roles:
+        payload_dir = Path(f"teams/{project}/sessions/{role}/payload")
+        cline_docs_dir = payload_dir / "cline_docs"
+        cline_docs_shared_dir = payload_dir / "cline_docs_shared"
+        windsurfrules_target = payload_dir / ".windsurfrules"
+        restore_script_target = payload_dir / "restore_payload.sh"
+
+        if not dry_run:
+            payload_dir.mkdir(parents=True, exist_ok=True)
+            # Copy cline_docs (overwrite if exists)
+            if cline_docs_dir.exists():
+                shutil.rmtree(cline_docs_dir)
+            shutil.copytree(base_templates, cline_docs_dir)
+            # Copy cline_docs_shared (overwrite if exists)
+            if cline_docs_shared_dir.exists():
+                shutil.rmtree(cline_docs_shared_dir)
+            shutil.copytree(shared_templates, cline_docs_shared_dir)
+            # Copy .windsurfrules (overwrite if exists)
+            shutil.copy2(windsurfrules, windsurfrules_target)
+            # Copy restore_payload.sh (overwrite if exists)
+            shutil.copy2(restore_script, restore_script_target)
+            print(
+                f"Populated {payload_dir} with Cline Memory Bank templates, .windsurfrules, and restore_payload.sh"
+            )
+
+
 def main():
     """
     Main function to run the scaffold_team.py script.
@@ -578,6 +614,9 @@ def main():
         env_file = generate_env_file(project, prefix, domain, roles, args.dry_run)
         env_template = generate_env_template(project, roles, args.dry_run)
         checklist = generate_checklist(project, roles, args.dry_run)
+
+        # --- Cline Memory Bank and Windsurfrules propagation ---
+        copy_cline_templates_and_rules(project, roles, args.dry_run)
 
         print("\nTeam configuration generated successfully!")
         print(f"Next steps:")
