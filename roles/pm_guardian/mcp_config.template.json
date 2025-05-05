@@ -29,6 +29,18 @@
                 "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
             }
         },
+        "discord": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-discord"
+            ],
+            "env": {
+                "DISCORD_BOT_TOKEN": "${DISCORD_BOT_TOKEN}",
+                "DISCORD_CLIENT_ID": "${DISCORD_CLIENT_ID}",
+                "DISCORD_GUILD_ID": "${DISCORD_GUILD_ID}"
+            }
+        },
         "context7": {
             "command": "npx",
             "args": [
