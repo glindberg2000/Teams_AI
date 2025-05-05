@@ -14,4 +14,10 @@
 
 ## Notes
 - All legacy, migration, and reorg notes have been moved to cline_docs/legacy/.
-- Only current, actionable context is kept here. 
+- Only current, actionable context is kept here.
+
+# Cline Memory Bank: Shared Docs Workflow (Summary)
+
+- Fill out `teams/{project}/cline_docs_shared/` after scaffolding, before crew creation.
+- Crew creation copies the filled shared docs into each session's payload.
+- See productContext.md for full workflow details. 

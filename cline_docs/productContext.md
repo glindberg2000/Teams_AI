@@ -101,4 +101,11 @@
 - Add session state monitoring and healthchecks
 - Create detailed troubleshooting documentation
 - Support for more complex team structures
-- Add monitoring and metrics for container health 
+- Add monitoring and metrics for container health
+
+# Cline Memory Bank: Shared Docs Workflow (Summary)
+
+- After scaffolding a team, fill out `teams/{project}/cline_docs_shared/` with all required shared context (product, system, tech, progress) before running crew creation.
+- During crew creation, the filled `cline_docs_shared/` is copied into each session's payload for all roles.
+- Each role then fills out their own `cline_docs/` as they work.
+- Never edit the templates in `roles/_templates/` directly; always use the team-level shared docs as the source of truth before crew creation. 

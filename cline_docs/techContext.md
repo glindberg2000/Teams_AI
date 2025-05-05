@@ -194,3 +194,9 @@ For proper integration between scaffold_team.py and team-cli.py, variables must 
 - API version compatibility maintained 
 
 # Only current, actionable technical context is kept here. All legacy, migration, and reorg notes have been moved to cline_docs/legacy/. 
+
+# Cline Memory Bank: Shared Docs Workflow (Summary)
+
+- Fill out `teams/{project}/cline_docs_shared/` after scaffolding, before crew creation.
+- Crew creation copies the filled shared docs into each session's payload.
+- See productContext.md for full workflow details. 

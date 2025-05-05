@@ -791,11 +791,29 @@ def create_crew(args):
             print(f"Error creating session {session_name}: {str(e)}")
             continue
 
+    # After all session payloads are created
+    propagate_cline_docs_shared(project_name, [role for role in sessions.keys()])
+    print("[INFO] All session payloads have received the finalized cline_docs_shared.")
+
     print(f"\nTeam creation complete! All sessions created in {project_dir}")
     print("\nAction Required:")
     print("1. Set ANTHROPIC_API_KEY in each session's .env file")
     print("2. Set PERPLEXITY_API_KEY in each session's .env file (optional)")
     print_reminders()
+
+
+def propagate_cline_docs_shared(project, roles):
+    """
+    Copy the filled cline_docs_shared from the team root into each session payload.
+    """
+    team_shared_dir = Path(f"teams/{project}/cline_docs_shared")
+    for role in roles:
+        payload_dir = Path(f"teams/{project}/sessions/{role}/payload")
+        target_shared_dir = payload_dir / "cline_docs_shared"
+        if target_shared_dir.exists():
+            shutil.rmtree(target_shared_dir)
+        shutil.copytree(team_shared_dir, target_shared_dir)
+        print(f"[INFO] Propagated cline_docs_shared to {target_shared_dir}")
 
 
 def main():

@@ -177,3 +177,9 @@ scaffold_team.py → Manual API Setup → team-cli create-crew → Container Lau
 - Inspect container initialization 
 
 # Only current, actionable system patterns are kept here. All legacy, migration, and reorg notes have been moved to cline_docs/legacy/. 
+
+# Cline Memory Bank: Shared Docs Workflow (Summary)
+
+- Fill out `teams/{project}/cline_docs_shared/` after scaffolding, before crew creation.
+- Crew creation copies the filled shared docs into each session's payload.
+- See productContext.md for full workflow details. 

@@ -168,4 +168,14 @@ This project is proprietary and confidential. All rights reserved.
 
 ### See Also
 - [Onboarding Checklist](teams/ledgerflow/config/checklist.md)
-- [mcp-discord GitHub](https://github.com/netixc/mcp-discord) 
+- [mcp-discord GitHub](https://github.com/netixc/mcp-discord)
+
+## Cline Memory Bank: Shared Docs Workflow
+
+1. **Scaffold your team** using the provided script. This will create a `cline_docs_shared/` folder at the team level.
+2. **Before creating the crew**, fill out all files in `teams/{project}/cline_docs_shared/` with your project's product, system, and tech context.
+3. **Run crew creation**. The system will copy your filled-out shared docs into each role's session payload, ensuring every role has the same context.
+4. **Each role** can then fill out their own `cline_docs/` as they work.
+
+**Never edit the templates in `roles/_templates/` directly.**  
+Always fill out the shared docs at the team level before crew creation. 

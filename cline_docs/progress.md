@@ -1,3 +1,11 @@
+# Cline Memory Bank: Shared Docs Workflow (Summary)
+
+- Fill out `teams/{project}/cline_docs_shared/` after scaffolding, before crew creation.
+- Crew creation copies the filled shared docs into each session's payload.
+- See productContext.md for full workflow details.
+
+---
+
 # Progress
 
 ## What Works

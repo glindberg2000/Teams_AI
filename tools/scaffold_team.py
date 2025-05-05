@@ -477,37 +477,36 @@ def generate_slackbot_manifest(display_name):
 
 def copy_cline_templates_and_rules(project, roles, dry_run=False):
     """
-    For each role, copy Cline Memory Bank templates, .windsurfrules, and the canonical restore_payload.sh into the session payload directory.
+    For each role, copy Cline Memory Bank templates and .windsurfrules into the session payload directory.
+    Also, copy the shared cline docs template to the team root (not into each session payload).
     """
     base_templates = Path("roles/_templates/cline_docs")
     shared_templates = Path("roles/_templates/cline_docs_shared")
     windsurfrules = Path("roles/_templates/.windsurfrules")
     restore_script = Path("roles/_templates/restore_payload.sh")
 
+    # Copy shared cline docs to team root if not already present
+    team_shared_dir = Path(f"teams/{project}/cline_docs_shared")
+    if team_shared_dir.exists():
+        shutil.rmtree(team_shared_dir)
+    shutil.copytree(shared_templates, team_shared_dir)
+    print(
+        f"[INFO] Copied shared Cline docs template to {team_shared_dir}. Fill these out before running crew creation."
+    )
+
     for role in roles:
         payload_dir = Path(f"teams/{project}/sessions/{role}/payload")
-        cline_docs_dir = payload_dir / "cline_docs"
-        cline_docs_shared_dir = payload_dir / "cline_docs_shared"
-        windsurfrules_target = payload_dir / ".windsurfrules"
-        restore_script_target = payload_dir / "restore_payload.sh"
-
-        if not dry_run:
-            payload_dir.mkdir(parents=True, exist_ok=True)
-            # Copy cline_docs (overwrite if exists)
-            if cline_docs_dir.exists():
-                shutil.rmtree(cline_docs_dir)
-            shutil.copytree(base_templates, cline_docs_dir)
-            # Copy cline_docs_shared (overwrite if exists)
-            if cline_docs_shared_dir.exists():
-                shutil.rmtree(cline_docs_shared_dir)
-            shutil.copytree(shared_templates, cline_docs_shared_dir)
-            # Copy .windsurfrules (overwrite if exists)
-            shutil.copy2(windsurfrules, windsurfrules_target)
-            # Copy restore_payload.sh (overwrite if exists)
-            shutil.copy2(restore_script, restore_script_target)
-            print(
-                f"Populated {payload_dir} with Cline Memory Bank templates, .windsurfrules, and restore_payload.sh"
-            )
+        # Copy per-role cline_docs
+        role_cline_dir = payload_dir / "cline_docs"
+        if role_cline_dir.exists():
+            shutil.rmtree(role_cline_dir)
+        shutil.copytree(base_templates, role_cline_dir)
+        # Copy .windsurfrules and restore script
+        shutil.copy2(windsurfrules, payload_dir / ".windsurfrules")
+        shutil.copy2(restore_script, payload_dir / "restore_payload.sh")
+        print(
+            f"Populated {payload_dir} with Cline Memory Bank templates, .windsurfrules, and restore_payload.sh"
+        )
 
 
 def main():
