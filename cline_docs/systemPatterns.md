@@ -175,3 +175,5 @@ scaffold_team.py → Manual API Setup → team-cli create-crew → Container Lau
 - Check documentation inheritance
 - Review MCP configuration generation
 - Inspect container initialization 
+
+# Only current, actionable system patterns are kept here. All legacy, migration, and reorg notes have been moved to cline_docs/legacy/. 

@@ -1,3 +1,9 @@
+# Task Master (Advanced/Optional)
+
+> **Note:** This document is for advanced users who want to use AI-driven project management with Task Master. For the standard team and session workflow, see the main [README.md](../README.md) and [cline_docs/](./) for project-level documentation.
+
+---
+
 # Task Master
 
 ### by [@eyaltoledano](https://x.com/eyaltoledano)
@@ -643,3 +649,5 @@ Can you analyze the complexity of our tasks to help me understand which ones nee
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+# Only current, actionable Task Master documentation is kept here. All legacy, migration, and reorg notes have been moved to cline_docs/legacy/.

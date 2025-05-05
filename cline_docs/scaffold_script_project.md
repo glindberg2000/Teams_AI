@@ -137,4 +137,6 @@ Generated:
 3. Create YAML/env file generators
 4. Add LLM tool suggestions
 5. Integrate with team-cli
-6. Add validation and error handling 
+6. Add validation and error handling
+
+# Only current, actionable scaffold script project documentation is kept here. All legacy, migration, and reorg notes have been moved to cline_docs/legacy/. 

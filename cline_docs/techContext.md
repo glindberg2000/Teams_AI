@@ -192,3 +192,5 @@ For proper integration between scaffold_team.py and team-cli.py, variables must 
 - Docker version requirements documented
 - Minimum system requirements specified
 - API version compatibility maintained 
+
+# Only current, actionable technical context is kept here. All legacy, migration, and reorg notes have been moved to cline_docs/legacy/. 
