@@ -1,6 +1,6 @@
-# Documentation Hierarchy & Inheritance
+# Documentation Hierarchy & Inheritance (Legacy Reference)
 
-This file explains the documentation structure for the LedgerFlow_AI_Team repo and how docs are inherited by containers and sessions.
+This file is kept for reference in cline_docs/legacy/. See cline_docs/ for current Memory Bank and doc system.
 
 ## Doc Locations
 
