@@ -38,20 +38,40 @@ echo "Creating backup structure..."
 mkdir -p "$TARGET"
 
 # Copy key directories and files
-echo "Copying sessions..."
-cp -r "$REPO_ROOT/sessions" "$TARGET/"
+echo "Copying teams (live team/session data)..."
+if [ -d "$REPO_ROOT/teams" ]; then
+  cp -r "$REPO_ROOT/teams" "$TARGET/"
+else
+  echo "WARNING: teams/ directory not found. Skipping teams backup."
+fi
 
 echo "Copying docs..."
-cp -r "$REPO_ROOT/docs" "$TARGET/"
+if [ -d "$REPO_ROOT/docs" ]; then
+  cp -r "$REPO_ROOT/docs" "$TARGET/"
+else
+  echo "WARNING: docs/ directory not found. Skipping docs backup."
+fi
 
 echo "Copying roles..."
-cp -r "$REPO_ROOT/roles" "$TARGET/"
+if [ -d "$REPO_ROOT/roles" ]; then
+  cp -r "$REPO_ROOT/roles" "$TARGET/"
+else
+  echo "WARNING: roles/ directory not found. Skipping roles backup."
+fi
 
 echo "Copying team-cli..."
-cp -r "$REPO_ROOT/team-cli" "$TARGET/"
+if [ -d "$REPO_ROOT/team-cli" ]; then
+  cp -r "$REPO_ROOT/team-cli" "$TARGET/"
+else
+  echo "WARNING: team-cli/ directory not found. Skipping team-cli backup."
+fi
 
 echo "Copying team-envs..."
-cp -r "$REPO_ROOT/team-envs" "$TARGET/"
+if [ -d "$REPO_ROOT/team-envs" ]; then
+  cp -r "$REPO_ROOT/team-envs" "$TARGET/"
+else
+  echo "INFO: team-envs/ directory not found. Skipping team-envs backup."
+fi
 
 # Copy .env file if it exists
 if [ -f "$REPO_ROOT/.env" ]; then
@@ -65,6 +85,14 @@ cp "$REPO_ROOT/README.md" "$TARGET/" 2>/dev/null || true
 echo "Copying CONTRIBUTING.md..."
 cp "$REPO_ROOT/CONTRIBUTING.md" "$TARGET/" 2>/dev/null || true
 
+# Legacy: Copy sessions if present (non-fatal)
+if [ -d "$REPO_ROOT/sessions" ]; then
+  echo "Copying legacy sessions..."
+  cp -r "$REPO_ROOT/sessions" "$TARGET/"
+else
+  echo "INFO: sessions/ directory not found (expected for new setups)."
+fi
+
 # Create backup manifest
 echo "Creating backup manifest..."
 cat > "$TARGET/backup_manifest.txt" << EOF
@@ -72,7 +100,7 @@ Backup created on: $(date)
 From directory: $REPO_ROOT
 Backup target: $TARGET
 Backed up items:
-✓ sessions
+✓ teams
 ✓ docs
 ✓ roles
 ✓ team-cli

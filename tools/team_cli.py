@@ -524,69 +524,24 @@ def create_session(args):
 
 
 def add_role(args):
+    import shutil
+
     name = args.name or input("New role/template name: ").strip()
     role_path = ROLES_DIR / name
     if role_path.exists():
         print(f"Role '{name}' already exists.")
         sys.exit(1)
-    os.makedirs(role_path / "docs", exist_ok=True)
-    # Create sample files
-    (role_path / "teams/sample/config/env").write_text(
-        "# Fill in environment variables\nSLACK_BOT_TOKEN=\nSLACK_TEAM_ID=\nGIT_USER_NAME=\nGIT_USER_EMAIL=\nGITHUB_PERSONAL_ACCESS_TOKEN=\nGIT_SSH_KEY_PATH=/root/.ssh/id_rsa # Defaults to generated key if left blank\n# Add other required secrets here\nANTHROPIC_API_KEY= # Required for Taskmaster MCP\nPERPLEXITY_API_KEY= # Required for Taskmaster MCP\n"
+    # Copy from example_role as a full-featured template
+    example_role_path = ROLES_DIR / "example_role"
+    if not example_role_path.exists():
+        print(
+            "Error: example_role template not found. Please ensure roles/example_role exists."
+        )
+        sys.exit(1)
+    shutil.copytree(example_role_path, role_path)
+    print(
+        f"Created new role template at {role_path} (copied from example_role). Edit the template files as needed."
     )
-    # Build mcp_config.template.json with all default servers and taskmaster-ai
-    mcp_config = {
-        "mcpServers": {
-            "puppeteer": {
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
-                "env": {},
-            },
-            "github": {
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-github"],
-                "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-                },
-            },
-            "slack": {
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-slack"],
-                "env": {
-                    "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
-                    "SLACK_TEAM_ID": "${SLACK_TEAM_ID}",
-                },
-            },
-            "context7": {
-                "command": "npx",
-                "args": ["-y", "@upstash/context7-mcp@latest"],
-            },
-            "taskmaster-ai": {
-                "command": "npx",
-                "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-                "env": {
-                    "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
-                    "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}",
-                    "MODEL": "claude-3-7-sonnet-20250219",
-                    "PERPLEXITY_MODEL": "sonar-pro",
-                    "MAX_TOKENS": "64000",
-                    "TEMPERATURE": "0.2",
-                    "DEFAULT_SUBTASKS": "5",
-                    "DEFAULT_PRIORITY": "medium",
-                },
-            },
-        }
-    }
-    import json
-
-    (role_path / "mcp_config.template.json").write_text(
-        json.dumps(mcp_config, indent=2) + "\n"
-    )
-    (role_path / "docs/agent_instructions.md").write_text(
-        "# Agent Instructions\n\nDescribe the agent's responsibilities here.\n"
-    )
-    print(f"Created new role template at {role_path}.")
-    print("Edit the template files as needed.")
 
 
 def print_simple_help():

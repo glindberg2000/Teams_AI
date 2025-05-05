@@ -5,6 +5,38 @@ This document defines the canonical prompt and operational guide for assuming th
 
 ---
 
+## Team Manager Canonical Workflow
+
+1. **Confirm Team/Project**
+   - Always ask the user: "Which team/project are you working on?"
+   - Do not proceed until the team is confirmed.
+
+2. **Enumerate and Understand Roles**
+   - After team selection, enumerate all roles in use for that team (from the env/config or sessions directory).
+   - For each role, review its responsibilities, current status, and any special requirements.
+   - Be ready to create/remove roles, check status of containers, reconfigure or refresh container payloads, and manage docs for each role.
+
+3. **Backup Before Changes**
+   - Before making any changes to live container data, updating sessions, or reconfiguring payloads, always run the `backup_to_cloud.py` script.
+   - Confirm that the backup completed successfully before proceeding.
+
+4. **Safe Operations Checklist**
+   - [ ] Confirm team/project
+   - [ ] Confirm and enumerate all roles
+   - [ ] Run and verify backup
+   - [ ] Proceed with requested action (create/remove role, refresh container, etc.)
+
+5. **Continuous Monitoring & Documentation**
+   - Regularly check the status of all containers, sessions, and role configs.
+   - Update documentation and logs after any significant change.
+   - Use the memory bank and project docs to stay up to date on system patterns, tech stack, and best practices.
+
+---
+
+**This is the canonical workflow for safe, live team management. Always follow these steps to ensure data integrity, security, and operational continuity.**
+
+---
+
 ## 1. Team Manager Responsibilities
 - Maintain the health, security, and productivity of all active teams, sessions, and containers
 - Onboard/offboard team members and roles as needed

@@ -208,6 +208,12 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
 
     # Add role-specific configurations
     for role in roles:
+        # CRITICAL: For team-cli parsing, we must follow a specific format:
+        # It extracts session names by looking at environment variables like:
+        # PM_GUARDIAN_SLACK_TOKEN -> ["PM", "GUARDIAN", "SLACK_TOKEN"]
+        # Then it takes parts[:-2] (["PM", "GUARDIAN"]) and joins with "_" to get "pm_guardian"
+
+        # Convert role to uppercase for environment variables
         role_upper = role.upper()
         role_id = role.lower()
         role_display = capitalize_first_letters(role_id)
@@ -221,6 +227,9 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
                 f"{role_upper}_EMAIL={prefix}+{project}-{role_id}@{domain}",
                 f"{role_upper}_SLACK_TOKEN=  # Required: Bot token for this role",
                 f"{role_upper}_GITHUB_TOKEN=  # Required: GitHub PAT for this role",
+                f"{role_upper}_DISCORD_BOT_TOKEN=  # Required: Discord bot token for this role",
+                f"{role_upper}_DISCORD_CLIENT_ID=  # Required: Discord client ID for this role",
+                f"{role_upper}_DISCORD_GUILD_ID=  # Optional: Discord guild/server ID for this role",
                 f"{role_upper}_BOT={project}_{role_id}_bot",
                 f"{role_upper}_GITHUB={role_github}",
                 f"{role_upper}_DISPLAY={role_display_var}",
@@ -278,6 +287,9 @@ def generate_env_template(project, roles, dry_run=False):
                 f"{role_upper}_EMAIL=${{EMAIL_PREFIX}}+${{TEAM_NAME}}-{role_id}@${{DOMAIN}}",
                 f"{role_upper}_SLACK_TOKEN=  # Required: Bot token for this role",
                 f"{role_upper}_GITHUB_TOKEN=  # Required: GitHub PAT for this role",
+                f"{role_upper}_DISCORD_BOT_TOKEN=  # Required: Discord bot token for this role",
+                f"{role_upper}_DISCORD_CLIENT_ID=  # Required: Discord client ID for this role",
+                f"{role_upper}_DISCORD_GUILD_ID=  # Optional: Discord guild/server ID for this role",
                 f"{role_upper}_BOT=${{TEAM_NAME}}_{role_id}_bot",
                 f"{role_upper}_GITHUB=${{TEAM_NAME}}-{role_id}",
                 f"{role_upper}_DISPLAY=${{TEAM_NAME_CAP}} {role_display}",
@@ -337,40 +349,74 @@ def generate_checklist(project, roles, dry_run=False):
         "",
         "### Per-Role API Keys",
         "",
+        "- [ ] **For each role, you must create a separate Discord bot (application) and obtain its credentials.**",
+        "- [ ] **Each role needs its own Discord bot token, client ID, and (optionally) guild/server ID.**",
+        "",
+        "#### Example for PM_GUARDIAN:",
+        "- [ ] **PM_GUARDIAN_SLACK_TOKEN**: Unique Slack bot token for this role",
+        "- [ ] **PM_GUARDIAN_GITHUB_TOKEN**: Unique GitHub PAT for this role",
+        "- [ ] **PM_GUARDIAN_DISCORD_BOT_TOKEN**: Unique Discord bot token for this role",
+        "- [ ] **PM_GUARDIAN_DISCORD_CLIENT_ID**: Discord client ID for this role",
+        "- [ ] **PM_GUARDIAN_DISCORD_GUILD_ID**: (Optional) Discord guild/server ID for this role",
+        "",
+        "(Repeat for each role: PYTHON_CODER, REVIEWER, DB_GUARDIAN, FULL_STACK_DEV, etc.)",
+        "",
+        "## Discord Bot Setup (Repeat for Each Role)",
+        "",
+        "1. **Create a Discord Application & Bot**",
+        "    - Go to the [Discord Developer Portal](https://discord.com/developers/applications).",
+        "    - Click **'New Application'**. Name it for the role (e.g., `Ledgerflow PM Guardian`).",
+        "    - **Set an app icon**: Upload a square image (preferably 512x512px PNG) that represents the role.",
+        "    - **Set a banner image**: (optional, for branding) Recommended size: 960x540px PNG or JPG.",
+        "    - In the left sidebar, click **'Bot'** → **'Add Bot'**.",
+        "    - Click **'Reset Token'** to generate your bot token. **Copy and store this token securely.**",
+        "2. **Bot Settings**",
+        "    - **PUBLIC BOT**: Enable if you want others to add the bot to their servers. For most use cases, leave this checked.",
+        "    - **REQUIRES OAUTH2 CODE GRANT**: Leave unchecked unless you need advanced OAuth2 flows.",
+        "3. **Privileged Gateway Intents** (Bot tab)",
+        "    - **PRESENCE INTENT**: Enable if your bot needs to see user presence (recommended: ON).",
+        "    - **SERVER MEMBERS INTENT**: Enable if your bot needs to see member join/leave events (recommended: ON).",
+        "    - **MESSAGE CONTENT INTENT**: Enable if your bot needs to read message content (recommended: ON).",
+        "    - **Note**: If your bot is in 100+ servers, you may need to apply for verification for these intents.",
+        "4. **Get Your Client ID**",
+        "    - On the application's main page, copy the **Application (client) ID**.",
+        "5. **(Optional) Get Your Guild (Server) ID**",
+        "    - In Discord, enable **Developer Mode** (User Settings → Advanced).",
+        "    - Right-click your server icon → **Copy Server ID**.",
+        "6. **Invite the Bot to Your Server**",
+        "    - Go to **OAuth2 → URL Generator** in the Developer Portal.",
+        "    - Select scopes: `bot` and `applications.commands`.",
+        "    - Select permissions your bot needs (e.g., `Send Messages`, `Read Messages`, etc.).",
+        "    - Use the permissions calculator if needed: [Discord Permissions Calculator](https://discordapi.com/permissions.html)",
+        "    - Copy the generated URL, open it in your browser, and invite the bot to your server.",
+        "7. **Fill in Your Env File**",
+        "    - For each role, add:",
+        "      ```",
+        "      <ROLE>_DISCORD_BOT_TOKEN=your-bot-token",
+        "      <ROLE>_DISCORD_CLIENT_ID=your-client-id",
+        "      <ROLE>_DISCORD_GUILD_ID=your-guild-id   # (optional)",
+        "      ```",
+        "    - Example for `PM_GUARDIAN`:",
+        "      ```",
+        "      PM_GUARDIAN_DISCORD_BOT_TOKEN=...",
+        "      PM_GUARDIAN_DISCORD_CLIENT_ID=...",
+        "      PM_GUARDIAN_DISCORD_GUILD_ID=...",
+        "      ```",
+        "",
+        "## Session Management",
+        "",
+        "- Use `tools/team_cli.py create-session` to create individual sessions",
+        "- Use `tools/team_cli.py create-crew --env-file teams/{project}/config/env` to create all sessions at once",
+        "- Each session will have its own isolated environment with unique SSH keys",
+        "",
+        "## Troubleshooting",
+        "",
+        "- **Session Extraction Issues**: If team-cli isn't finding your sessions, check that your environment variables follow the pattern `ROLE_SLACK_TOKEN` (e.g., `PM_GUARDIAN_SLACK_TOKEN`).",
+        "- **Missing Keys**: Ensure each role has all required tokens (Slack, GitHub, Discord) in the environment file.",
+        "- **Role Directory Not Found**: The warning about falling back to python_coder is normal if you don't have a custom role directory. Create `roles/your_role_name/` for custom role configuration.",
+        "",
+        "For each role, create and configure a Discord bot as described above. This ensures every AI persona has its own Discord identity and can operate independently in your Discord server.",
     ]
-
-    for role in roles:
-        role_upper = role.upper()
-        role_id = role.lower()
-        role_display = capitalize_first_letters(role_id)
-        content.append(
-            f"- [ ] **{role_upper}_SLACK_TOKEN**: Unique Slack bot token for this role"
-        )
-        content.append(
-            f"- [ ] **{role_upper}_GITHUB_TOKEN**: Unique GitHub PAT for this role"
-        )
-
-    content.extend(
-        [
-            "## Session Management",
-            "",
-            "- Use `tools/team_cli.py create-session` to create individual sessions",
-            f"- Use `tools/team_cli.py create-crew --env-file teams/{project}/config/env` to create all sessions at once",
-            "- Each session will have its own isolated environment with unique SSH keys",
-            "",
-            "## Troubleshooting",
-            "",
-            "- **Session Extraction Issues**: If team-cli isn't finding your sessions, check that your environment variables follow the pattern `ROLE_SLACK_TOKEN` (e.g., `PM_GUARDIAN_SLACK_TOKEN`).",
-            "- **Missing Keys**: Ensure each role has all required tokens (Slack, GitHub) in the environment file.",
-            "- **Role Directory Not Found**: The warning about falling back to python_coder is normal if you don't have a custom role directory. Create `roles/your_role_name/` for custom role configuration.",
-        ]
-    )
-
-    for role in roles:
-        role_display = capitalize_first_letters(role)
-        content.append(
-            f"- [ ] Create Slackbot for {role_display} using slackbot_manifest_{role}.json in the config directory."
-        )
 
     if dry_run:
         return None
@@ -502,6 +548,9 @@ def main():
             f"{role_upper}_EMAIL={prefix}+{project}-{role_id}@{domain}",
             f"{role_upper}_SLACK_TOKEN=  # Required: Bot token for this role",
             f"{role_upper}_GITHUB_TOKEN=  # Required: GitHub PAT for this role",
+            f"{role_upper}_DISCORD_BOT_TOKEN=  # Required: Discord bot token for this role",
+            f"{role_upper}_DISCORD_CLIENT_ID=  # Required: Discord client ID for this role",
+            f"{role_upper}_DISCORD_GUILD_ID=  # Optional: Discord guild/server ID for this role",
             f"{role_upper}_BOT={project}_{role_id}_bot",
             f"{role_upper}_GITHUB={project}-{role_id}",
             f"{role_upper}_DISPLAY={project_display} {role_display}",
