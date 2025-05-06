@@ -393,9 +393,20 @@ def create_session(args):
         ]:
             if k in env_vars:
                 f.write(f"{k}={env_vars[k]}\n")
-        # Write any other generic fields
-        for k in ["SLACK_TEAM_ID", "TEAM_NAME", "TEAM_DESCRIPTION", "PROJECT_NAME"]:
-            if k in env_vars:
+        # Write any other generic fields (excluding those already written)
+        already_written = set(
+            task_master_vars
+            + [
+                "GIT_USER_EMAIL",
+                "SLACK_BOT_TOKEN",
+                "GITHUB_PERSONAL_ACCESS_TOKEN",
+                "DISCORD_BOT_TOKEN",
+                "DISCORD_CLIENT_ID",
+                "DISCORD_GUILD_ID",
+            ]
+        )
+        for k in generic_keys:
+            if k not in already_written and k in env_vars:
                 f.write(f"{k}={env_vars[k]}\n")
 
     # --- Generate MCP config ---
