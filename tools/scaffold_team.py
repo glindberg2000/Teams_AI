@@ -174,6 +174,10 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         f"PROJECT_NAME={project}",
         f"EMAIL_PREFIX={prefix}",
         "",
+        "# Project and Integration Repos",
+        "PROJECT_REPO_URL=  # Required: Main project repo URL (e.g. https://github.com/yourorg/yourproject.git)",
+        "MCP_DISCORD_REPO_URL=  # Required: Discord MCP repo URL (e.g. https://github.com/netixc/mcp-discord.git)",
+        "",
         "# Documentation Configuration",
         "INCLUDE_GLOBAL_DOCS=true",
         "INCLUDE_PROJECT_DOCS=true",
@@ -273,6 +277,10 @@ def generate_env_template(project, roles, dry_run=False):
         "TEAM_NAME=${TEAM_NAME}",
         "TEAM_DESCRIPTION=${TEAM_DESCRIPTION}",
         "",
+        "# Project and Integration Repos",
+        "PROJECT_REPO_URL=${PROJECT_REPO_URL}",
+        "MCP_DISCORD_REPO_URL=${MCP_DISCORD_REPO_URL}",
+        "",
     ]
 
     # Add role-specific configurations
@@ -330,6 +338,10 @@ def generate_checklist(project, roles, dry_run=False):
     """
     content = [
         f"# {project} Team Setup Checklist",
+        "",
+        "## Required Repositories",
+        "- [ ] **PROJECT_REPO_URL**: Main project repo URL (e.g. https://github.com/yourorg/yourproject.git)",
+        "- [ ] **MCP_DISCORD_REPO_URL**: Discord MCP repo URL (e.g. https://github.com/netixc/mcp-discord.git)",
         "",
         "## Core Setup",
         "",
