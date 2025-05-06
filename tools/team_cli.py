@@ -309,18 +309,6 @@ def create_session(args):
     env_sample_path = SESSIONS_DIR / project / "config" / "env.template"
     env_path = session_path / "payload/.env"  # Write directly to payload
 
-    # Initialize with default values for Task Master
-    env_vars = {
-        "MODEL": "claude-3-sonnet-20240229",
-        "PERPLEXITY_MODEL": "sonar-medium-online",
-        "MAX_TOKENS": "64000",
-        "TEMPERATURE": "0.2",
-        "DEFAULT_SUBTASKS": "5",
-        "DEFAULT_PRIORITY": "medium",
-        "DEBUG": "false",
-        "LOG_LEVEL": "info",
-    }
-
     # First load template values
     template_vars = {}
     if env_sample_path.exists():
@@ -331,6 +319,17 @@ def create_session(args):
                     template_vars[k] = v.strip()
     else:
         print(f"[WARNING] Environment template not found at {env_sample_path}")
+
+    # Overlay actual env file values (filled values) into template_vars
+    env_file_path = getattr(args, "env_file", None) or TEAM_ENV
+    if Path(env_file_path).exists():
+        with open(env_file_path, "r") as f:
+            for line in f:
+                if line.strip() and not line.strip().startswith("#") and "=" in line:
+                    k, v = line.strip().split("=", 1)
+                    template_vars[k] = v.strip()
+    else:
+        print(f"[WARNING] Actual env file not found at {env_file_path}")
 
     # Overlay any values from --all-env
     if hasattr(args, "all_env") and args.all_env:
