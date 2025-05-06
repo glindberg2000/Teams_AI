@@ -51,10 +51,10 @@ if [ ! -d "/workspaces/project/$REPO_NAME" ]; then
   git clone "$PROJECT_REPO_URL" "/workspaces/project/$REPO_NAME"
 fi
 
-# 7. Run restore script if it exists (final step)
-if [ -f "/workspaces/project/restore_payload.sh" ]; then
-    echo "[setup] Running restore script..."
-    bash /workspaces/project/restore_payload.sh
+# 7. Run restore script from scripts directory if it exists (final step)
+if [ -f "/workspaces/project/.devcontainer/scripts/restore_payload.sh" ]; then
+    echo "[setup] Running restore script from .devcontainer/scripts..."
+    bash /workspaces/project/.devcontainer/scripts/restore_payload.sh
 fi
 
 # --- End of setup --- 
