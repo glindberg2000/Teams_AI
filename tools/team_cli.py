@@ -322,47 +322,63 @@ def create_session(args):
     }
 
     # First load template values
+    template_vars = {}
     if env_sample_path.exists():
         with open(env_sample_path, "r") as f:
             for line in f:
                 if line.strip() and not line.strip().startswith("#") and "=" in line:
                     k, v = line.strip().split("=", 1)
-                    env_vars[k] = v.strip()  # Strip whitespace from values
+                    template_vars[k] = v.strip()
     else:
         print(f"[WARNING] Environment template not found at {env_sample_path}")
 
-    # Then overlay any values from --all-env
+    # Overlay any values from --all-env
     if hasattr(args, "all_env") and args.all_env:
         for kv in args.all_env:
             if "=" in kv:
                 k, v = kv.split("=", 1)
-                env_vars[k] = v.strip()
+                template_vars[k] = v.strip()
+
+    # Map only the current role's fields to standard names
+    role_upper = role.upper()
+    role_prefix = role_upper
+    # Allow for both FOO_BAR and FOO_BAR_BAZ (e.g., FULL_STACK_DEV)
+    # Map fields for this role only
+    role_fields = {
+        f"{role_prefix}_EMAIL": "GIT_USER_EMAIL",
+        f"{role_prefix}_SLACK_TOKEN": "SLACK_BOT_TOKEN",
+        f"{role_prefix}_GITHUB_TOKEN": "GITHUB_PERSONAL_ACCESS_TOKEN",
+        f"{role_prefix}_DISCORD_BOT_TOKEN": "DISCORD_BOT_TOKEN",
+        f"{role_prefix}_DISCORD_CLIENT_ID": "DISCORD_CLIENT_ID",
+        f"{role_prefix}_DISCORD_GUILD_ID": "DISCORD_GUILD_ID",
+    }
+    for src, dest in role_fields.items():
+        if src in template_vars:
+            env_vars[dest] = template_vars[src]
+
+    # Add any generic fields from template_vars (e.g., ANTHROPIC_API_KEY, etc.)
+    generic_keys = [
+        "ANTHROPIC_API_KEY",
+        "PERPLEXITY_API_KEY",
+        "MODEL",
+        "PERPLEXITY_MODEL",
+        "MAX_TOKENS",
+        "TEMPERATURE",
+        "DEFAULT_SUBTASKS",
+        "DEFAULT_PRIORITY",
+        "DEBUG",
+        "LOG_LEVEL",
+        "SLACK_TEAM_ID",
+        "TEAM_NAME",
+        "TEAM_DESCRIPTION",
+        "PROJECT_NAME",
+    ]
+    for k in generic_keys:
+        if k in template_vars:
+            env_vars[k] = template_vars[k]
 
     # Write the .env file with consistent formatting
     os.makedirs(os.path.dirname(env_path), exist_ok=True)
-
-    # First, resolve any template variables in the env_vars
-    resolved_env_vars = {}
-    for k, v in env_vars.items():
-        if isinstance(v, str) and "${" in v:
-            # Replace template variables with their values
-            resolved_value = v
-            for var_name, var_value in env_vars.items():
-                if isinstance(var_value, str) and "#" in var_value:
-                    # Strip comments from the value
-                    var_value = var_value.split("#")[0].strip()
-
-                placeholder = f"${{{var_name}}}"
-                if placeholder in resolved_value:
-                    resolved_value = resolved_value.replace(placeholder, str(var_value))
-            resolved_env_vars[k] = resolved_value
-        else:
-            # Strip comments if present
-            if isinstance(v, str) and "#" in v:
-                v = v.split("#")[0].strip()
-            resolved_env_vars[k] = v
-
-    # Use the resolved variables for writing the file
     with open(env_path, "w") as f:
         # Write Task Master variables first
         task_master_vars = [
@@ -378,13 +394,23 @@ def create_session(args):
             "LOG_LEVEL",
         ]
         for k in task_master_vars:
-            if k in resolved_env_vars:
-                f.write(f"{k}={resolved_env_vars[k]}\n")
-
-        # Write remaining variables
-        for k, v in resolved_env_vars.items():
-            if k not in task_master_vars:
-                f.write(f"{k}={v}\n")
+            if k in env_vars:
+                f.write(f"{k}={env_vars[k]}\n")
+        # Write mapped role-specific fields
+        for k in [
+            "GIT_USER_EMAIL",
+            "SLACK_BOT_TOKEN",
+            "GITHUB_PERSONAL_ACCESS_TOKEN",
+            "DISCORD_BOT_TOKEN",
+            "DISCORD_CLIENT_ID",
+            "DISCORD_GUILD_ID",
+        ]:
+            if k in env_vars:
+                f.write(f"{k}={env_vars[k]}\n")
+        # Write any other generic fields
+        for k in ["SLACK_TEAM_ID", "TEAM_NAME", "TEAM_DESCRIPTION", "PROJECT_NAME"]:
+            if k in env_vars:
+                f.write(f"{k}={env_vars[k]}\n")
 
     # --- Generate MCP config ---
     import json
