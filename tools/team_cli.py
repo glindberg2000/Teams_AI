@@ -329,22 +329,28 @@ def create_session(args):
 
     # Overlay actual env file values (filled values) into template_vars LAST
     env_file_path = getattr(args, "env_file", None) or TEAM_ENV
+    print(f"[DEBUG] Reading actual env file: {env_file_path}")
     if Path(env_file_path).exists():
         with open(env_file_path, "r") as f:
             for line in f:
                 if line.strip() and not line.strip().startswith("#") and "=" in line:
                     k, v = line.strip().split("=", 1)
+                    if k == "SLACK_TEAM_ID":
+                        print(f"[DEBUG] Raw SLACK_TEAM_ID line: {line.rstrip()}")
+                        print(f"[DEBUG] SLACK_TEAM_ID value before strip: '{v}'")
+                        print(f"[DEBUG] SLACK_TEAM_ID value after strip: '{v.strip()}'")
                     template_vars[k] = v.strip()
     else:
         print(f"[WARNING] Actual env file not found at {env_file_path}")
 
-    # Debug print for SLACK_TEAM_ID
+    # Debug print for SLACK_TEAM_ID and all keys
     if "SLACK_TEAM_ID" in template_vars:
         print(
-            f"[DEBUG] SLACK_TEAM_ID in template_vars before mapping: {template_vars['SLACK_TEAM_ID']}"
+            f"[DEBUG] SLACK_TEAM_ID in template_vars before mapping: '{template_vars['SLACK_TEAM_ID']}'"
         )
     else:
         print("[DEBUG] SLACK_TEAM_ID not found in template_vars before mapping")
+    print(f"[DEBUG] All keys in template_vars: {list(template_vars.keys())}")
 
     # Initialize with default values for Task Master
     env_vars = {
@@ -833,6 +839,8 @@ def create_crew(args):
             ],
             overwrite=getattr(args, "overwrite", False),
         )
+        # Ensure the correct env file is always used
+        session_args.env_file = str(env_file)
 
         try:
             create_session(session_args)
