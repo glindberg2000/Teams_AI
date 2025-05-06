@@ -331,6 +331,18 @@ def create_session(args):
     else:
         print(f"[WARNING] Actual env file not found at {env_file_path}")
 
+    # Initialize with default values for Task Master
+    env_vars = {
+        "MODEL": "claude-3-sonnet-20240229",
+        "PERPLEXITY_MODEL": "sonar-medium-online",
+        "MAX_TOKENS": "64000",
+        "TEMPERATURE": "0.2",
+        "DEFAULT_SUBTASKS": "5",
+        "DEFAULT_PRIORITY": "medium",
+        "DEBUG": "false",
+        "LOG_LEVEL": "info",
+    }
+
     # Overlay any values from --all-env
     if hasattr(args, "all_env") and args.all_env:
         for kv in args.all_env:
