@@ -130,58 +130,17 @@ def setup_devcontainer(session_path: Path, project: str, name: str):
 
         print(f"Set up devcontainer configuration in {session_devcontainer}")
 
-    # Update Dockerfile to use simpler configuration
-    dockerfile = session_devcontainer / "Dockerfile"
-    if dockerfile.exists():
-        dockerfile_content = """FROM node:20-bullseye
-
-# system deps + jq
-RUN apt-get update && \\
-    apt-get install -y wget curl ca-certificates tar gzip git docker.io jq && \\
-    rm -rf /var/lib/apt/lists/*
-
-# Set up workspace
-WORKDIR /workspaces/project
-
-# Keep container running
-CMD ["sleep", "infinity"]"""
-
-        with open(dockerfile, "w") as f:
-            f.write(dockerfile_content)
-
-        print(f"Updated Dockerfile in {session_devcontainer}")
-
-    # Ensure scripts directory exists
+    # Ensure scripts directory exists and copy all scripts from project root
     scripts_dir = session_devcontainer / "scripts"
     scripts_dir.mkdir(exist_ok=True)
-
-    # Create setup_workspace.sh
-    setup_workspace = scripts_dir / "setup_workspace.sh"
-    setup_workspace_content = """#!/bin/bash
-set -e
-
-# Run restore script if it exists
-if [ -f "/workspaces/project/restore_payload.sh" ]; then
-    echo "Running restore script..."
-    bash /workspaces/project/restore_payload.sh
-fi
-"""
-    with open(setup_workspace, "w") as f:
-        f.write(setup_workspace_content)
-    os.chmod(setup_workspace, 0o755)
-
-    # Create refresh_configs.sh
-    refresh_configs = scripts_dir / "refresh_configs.sh"
-    refresh_configs_content = """#!/bin/bash
-set -e
-
-# Nothing to do here - configs are handled by restore script
-"""
-    with open(refresh_configs, "w") as f:
-        f.write(refresh_configs_content)
-    os.chmod(refresh_configs, 0o755)
-
-    print(f"Created devcontainer scripts in {scripts_dir}")
+    root_scripts_dir = DEVCONTAINER_DIR / "scripts"
+    if root_scripts_dir.exists():
+        for script_file in root_scripts_dir.iterdir():
+            if script_file.is_file():
+                shutil.copy2(script_file, scripts_dir / script_file.name)
+        print(f"Copied devcontainer scripts from {root_scripts_dir} to {scripts_dir}")
+    else:
+        print(f"[WARNING] No scripts found in {root_scripts_dir}")
 
 
 def create_session(args):
