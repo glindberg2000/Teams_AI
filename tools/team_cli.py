@@ -201,8 +201,12 @@ def create_session(args):
 
     session_path = project_sessions_dir / name
     if session_path.exists():
-        print(f"Session '{name}' already exists at {session_path}.")
-        sys.exit(1)
+        if getattr(args, "overwrite", False):
+            print(f"[OVERWRITE] Removing existing session directory: {session_path}")
+            shutil.rmtree(session_path)
+        else:
+            print(f"Session '{name}' already exists at {session_path}.")
+            sys.exit(1)
 
     # Copy role template to new session
     shutil.copytree(role_path, session_path)
@@ -782,6 +786,7 @@ def create_crew(args):
                     )
                 ],
             ],
+            overwrite=getattr(args, "overwrite", False),
         )
 
         try:
@@ -851,6 +856,11 @@ def main():
         dest="include_role_docs",
         help="Skip including role-specific documentation",
     )
+    create_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing session directory and regenerate all payload files",
+    )
 
     # Create Crew Command
     crew_parser = subparsers.add_parser(
@@ -858,6 +868,11 @@ def main():
     )
     crew_parser.add_argument("--env-file", help="Path to team environment file")
     crew_parser.add_argument("--template", help="Path to team template YAML file")
+    crew_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing session directories and regenerate all payload files",
+    )
 
     # Add Role Command
     add_role_parser = subparsers.add_parser("add-role", help="Add a new role template")
