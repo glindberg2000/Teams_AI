@@ -356,6 +356,8 @@ def create_session(args):
         "TEAM_NAME",
         "TEAM_DESCRIPTION",
         "PROJECT_NAME",
+        "PROJECT_REPO_URL",
+        "MCP_DISCORD_REPO_URL",
     ]
     for k in generic_keys:
         if k in template_vars:
