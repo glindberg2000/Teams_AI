@@ -178,4 +178,43 @@ This project is proprietary and confidential. All rights reserved.
 4. **Each role** can then fill out their own `cline_docs/` as they work.
 
 **Never edit the templates in `roles/_templates/` directly.**  
-Always fill out the shared docs at the team level before crew creation. 
+Always fill out the shared docs at the team level before crew creation.
+
+## Session Environment File Generation (Updated)
+
+Each session's `.env` file is now generated to include **only the fields for that role**, mapped to standard names. This ensures clean, minimal, and secure environment files for each agent.
+
+### What is included in each session `.env`:
+- Generic/global fields (e.g., `MODEL`, `ANTHROPIC_API_KEY`, etc.)
+- The following fields for the current role, mapped as follows:
+  - `<ROLE>_EMAIL` → `GIT_USER_EMAIL`
+  - `<ROLE>_SLACK_TOKEN` → `SLACK_BOT_TOKEN`
+  - `<ROLE>_GITHUB_TOKEN` → `GITHUB_PERSONAL_ACCESS_TOKEN`
+  - `<ROLE>_DISCORD_BOT_TOKEN` → `DISCORD_BOT_TOKEN`
+  - `<ROLE>_DISCORD_CLIENT_ID` → `DISCORD_CLIENT_ID`
+  - `<ROLE>_DISCORD_GUILD_ID` → `DISCORD_GUILD_ID`
+- No other roles' fields will be present in the session `.env`.
+
+### Discord Integration
+
+To enable Discord integration for each agent:
+- In your high-level team env file (e.g., `teams/<project>/config/env`), provide the following for each role:
+  - `<ROLE>_DISCORD_BOT_TOKEN` (required)
+  - `<ROLE>_DISCORD_CLIENT_ID` (required)
+  - `<ROLE>_DISCORD_GUILD_ID` (optional, for server-specific features)
+- These will be mapped to `DISCORD_BOT_TOKEN`, `DISCORD_CLIENT_ID`, and `DISCORD_GUILD_ID` in the session `.env`.
+- The MCP config for each agent will automatically use these values.
+
+#### Example (for pm_guardian):
+```
+PM_GUARDIAN_DISCORD_BOT_TOKEN=your-bot-token
+PM_GUARDIAN_DISCORD_CLIENT_ID=your-client-id
+PM_GUARDIAN_DISCORD_GUILD_ID=your-guild-id
+```
+
+#### Where to get these values:
+- Create a Discord Application and Bot for each role at https://discord.com/developers/applications
+- Copy the Bot Token and Client ID from the application page
+- (Optional) Get your server's Guild ID by enabling Developer Mode in Discord and right-clicking your server
+
+For more details, see the Discord section in `tools/scaffold_team.py` or the project documentation. 
