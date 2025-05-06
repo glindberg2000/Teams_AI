@@ -320,7 +320,14 @@ def create_session(args):
     else:
         print(f"[WARNING] Environment template not found at {env_sample_path}")
 
-    # Overlay actual env file values (filled values) into template_vars
+    # Overlay any values from --all-env
+    if hasattr(args, "all_env") and args.all_env:
+        for kv in args.all_env:
+            if "=" in kv:
+                k, v = kv.split("=", 1)
+                template_vars[k] = v.strip()
+
+    # Overlay actual env file values (filled values) into template_vars LAST
     env_file_path = getattr(args, "env_file", None) or TEAM_ENV
     if Path(env_file_path).exists():
         with open(env_file_path, "r") as f:
@@ -330,6 +337,14 @@ def create_session(args):
                     template_vars[k] = v.strip()
     else:
         print(f"[WARNING] Actual env file not found at {env_file_path}")
+
+    # Debug print for SLACK_TEAM_ID
+    if "SLACK_TEAM_ID" in template_vars:
+        print(
+            f"[DEBUG] SLACK_TEAM_ID in template_vars before mapping: {template_vars['SLACK_TEAM_ID']}"
+        )
+    else:
+        print("[DEBUG] SLACK_TEAM_ID not found in template_vars before mapping")
 
     # Initialize with default values for Task Master
     env_vars = {
@@ -342,13 +357,6 @@ def create_session(args):
         "DEBUG": "false",
         "LOG_LEVEL": "info",
     }
-
-    # Overlay any values from --all-env
-    if hasattr(args, "all_env") and args.all_env:
-        for kv in args.all_env:
-            if "=" in kv:
-                k, v = kv.split("=", 1)
-                template_vars[k] = v.strip()
 
     # Map only the current role's fields to standard names
     role_upper = role.upper()
