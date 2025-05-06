@@ -363,6 +363,16 @@ def create_session(args):
         if k in template_vars:
             env_vars[k] = template_vars[k]
 
+    # Helper to quote values with spaces
+    def quote_if_needed(val):
+        if (
+            isinstance(val, str)
+            and " " in val
+            and not (val.startswith('"') and val.endswith('"'))
+        ):
+            return f'"{val}"'
+        return val
+
     # Write the .env file with consistent formatting
     os.makedirs(os.path.dirname(env_path), exist_ok=True)
     with open(env_path, "w") as f:
@@ -381,7 +391,7 @@ def create_session(args):
         ]
         for k in task_master_vars:
             if k in env_vars:
-                f.write(f"{k}={env_vars[k]}\n")
+                f.write(f"{k}={quote_if_needed(env_vars[k])}\n")
         # Write mapped role-specific fields
         for k in [
             "GIT_USER_EMAIL",
@@ -392,7 +402,7 @@ def create_session(args):
             "DISCORD_GUILD_ID",
         ]:
             if k in env_vars:
-                f.write(f"{k}={env_vars[k]}\n")
+                f.write(f"{k}={quote_if_needed(env_vars[k])}\n")
         # Write any other generic fields (excluding those already written)
         already_written = set(
             task_master_vars
@@ -407,7 +417,7 @@ def create_session(args):
         )
         for k in generic_keys:
             if k not in already_written and k in env_vars:
-                f.write(f"{k}={env_vars[k]}\n")
+                f.write(f"{k}={quote_if_needed(env_vars[k])}\n")
 
     # --- Generate MCP config ---
     import json
