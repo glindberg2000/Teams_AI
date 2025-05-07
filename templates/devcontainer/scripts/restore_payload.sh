@@ -57,6 +57,9 @@ else
     log "INFO: No legacy global rules found (this is normal for new setups)"
 fi
 
+# Copy Cursor user rule for easy installation
+cp /workspaces/project/.devcontainer/scripts/cursor_user_rule.txt /workspaces/project/payload/cursor_user_rule.txt
+
 # Verify critical files
 log "Verifying critical files..."
 MISSING_FILES=0
