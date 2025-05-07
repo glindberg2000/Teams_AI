@@ -332,7 +332,7 @@ def create_session(args):
         f"{role_prefix}_EMAIL": "GIT_USER_EMAIL",
         f"{role_prefix}_SLACK_TOKEN": "SLACK_BOT_TOKEN",
         f"{role_prefix}_GITHUB_TOKEN": "GITHUB_PERSONAL_ACCESS_TOKEN",
-        f"{role_prefix}_DISCORD_BOT_TOKEN": "DISCORD_BOT_TOKEN",
+        f"{role_prefix}_DISCORD_TOKEN": "DISCORD_TOKEN",
         f"{role_prefix}_DISCORD_CLIENT_ID": "DISCORD_CLIENT_ID",
         f"{role_prefix}_DISCORD_GUILD_ID": "DISCORD_GUILD_ID",
     }
@@ -397,7 +397,7 @@ def create_session(args):
             "GIT_USER_EMAIL",
             "SLACK_BOT_TOKEN",
             "GITHUB_PERSONAL_ACCESS_TOKEN",
-            "DISCORD_BOT_TOKEN",
+            "DISCORD_TOKEN",
             "DISCORD_CLIENT_ID",
             "DISCORD_GUILD_ID",
         ]:
@@ -410,7 +410,7 @@ def create_session(args):
                 "GIT_USER_EMAIL",
                 "SLACK_BOT_TOKEN",
                 "GITHUB_PERSONAL_ACCESS_TOKEN",
-                "DISCORD_BOT_TOKEN",
+                "DISCORD_TOKEN",
                 "DISCORD_CLIENT_ID",
                 "DISCORD_GUILD_ID",
             ]

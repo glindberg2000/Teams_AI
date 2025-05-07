@@ -190,7 +190,7 @@ Each session's `.env` file is now generated to include **only the fields for tha
   - `<ROLE>_EMAIL` → `GIT_USER_EMAIL`
   - `<ROLE>_SLACK_TOKEN` → `SLACK_BOT_TOKEN`
   - `<ROLE>_GITHUB_TOKEN` → `GITHUB_PERSONAL_ACCESS_TOKEN`
-  - `<ROLE>_DISCORD_BOT_TOKEN` → `DISCORD_BOT_TOKEN`
+  - `<ROLE>_DISCORD_TOKEN` → `DISCORD_TOKEN`
   - `<ROLE>_DISCORD_CLIENT_ID` → `DISCORD_CLIENT_ID`
   - `<ROLE>_DISCORD_GUILD_ID` → `DISCORD_GUILD_ID`
 - No other roles' fields will be present in the session `.env`.
@@ -199,15 +199,15 @@ Each session's `.env` file is now generated to include **only the fields for tha
 
 To enable Discord integration for each agent:
 - In your high-level team env file (e.g., `teams/<project>/config/env`), provide the following for each role:
-  - `<ROLE>_DISCORD_BOT_TOKEN` (required)
+  - `<ROLE>_DISCORD_TOKEN` (required)
   - `<ROLE>_DISCORD_CLIENT_ID` (required)
   - `<ROLE>_DISCORD_GUILD_ID` (optional, for server-specific features)
-- These will be mapped to `DISCORD_BOT_TOKEN`, `DISCORD_CLIENT_ID`, and `DISCORD_GUILD_ID` in the session `.env`.
+- These will be mapped to `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, and `DISCORD_GUILD_ID` in the session `.env`.
 - The MCP config for each agent will automatically use these values.
 
 #### Example (for pm_guardian):
 ```
-PM_GUARDIAN_DISCORD_BOT_TOKEN=your-bot-token
+PM_GUARDIAN_DISCORD_TOKEN=your-bot-token
 PM_GUARDIAN_DISCORD_CLIENT_ID=your-client-id
 PM_GUARDIAN_DISCORD_GUILD_ID=your-guild-id
 ```
