@@ -60,6 +60,10 @@ fi
 # Copy Cursor user rule for easy installation
 cp /workspaces/project/.devcontainer/scripts/cursor_user_rule.txt /workspaces/project/payload/cursor_user_rule.txt
 
+# Copy Cursor project rule for auto-application
+mkdir -p /workspaces/project/payload/.cursor/rules
+cp /workspaces/project/.devcontainer/scripts/.cursor/rules/memory_bank.mdc /workspaces/project/payload/.cursor/rules/memory_bank.mdc
+
 # Verify critical files
 log "Verifying critical files..."
 MISSING_FILES=0
