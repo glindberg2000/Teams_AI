@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
+echo "[entrypoint] Starting entrypoint.sh"
+
 # Set up environment
 PROJECT_ROOT=${PROJECT_ROOT:-/workspaces/project}
 PAYLOAD_DIR="${PROJECT_ROOT}/payload"
 DOCS_DIR="${PROJECT_ROOT}/docs"
 WINDSURF_DIR="/root/.codeium/windsurf"
 
-# Ensure directories exist
+echo "[entrypoint] Ensuring directories exist..."
 mkdir -p "${WINDSURF_DIR}"
 mkdir -p "${DOCS_DIR}"
 
-# 1) copy static docs if they exist
+echo "[entrypoint] Copying static docs if they exist..."
 if [ -f "${PAYLOAD_DIR}/docs/global/global_rules.md" ]; then
     cp "${PAYLOAD_DIR}/docs/global/global_rules.md" "${WINDSURF_DIR}/global_rules.md"
 fi
@@ -20,15 +22,21 @@ if [ -f "${PAYLOAD_DIR}/docs/project/project_overview.md" ]; then
     cp "${PAYLOAD_DIR}/docs/project/project_overview.md" "${WINDSURF_DIR}/project_overview.md"
 fi
 
-# 2) merge in secrets & build mcp_config.json
-# Load environment variables from payload .env if it exists
+echo "[entrypoint] Loading env vars from payload/.env if present..."
+# Robustly export env vars from .env (skip invalid lines)
 if [ -f "${PAYLOAD_DIR}/.env" ]; then
-    set -a
-    source "${PAYLOAD_DIR}/.env"
-    set +a
+  while IFS='=' read -r key value; do
+    # Skip comments and empty lines
+    if [[ "$key" =~ ^#.*$ ]] || [[ -z "$key" ]]; then
+      continue
+    fi
+    export "$key"="$value"
+  done < "${PAYLOAD_DIR}/.env"
+else
+  echo "[entrypoint] WARNING: ${PAYLOAD_DIR}/.env not found."
 fi
 
-# Generate MCP config if template exists
+echo "[entrypoint] Generating MCP config if template exists..."
 if [ -f "${PAYLOAD_DIR}/mcp_config.template.json" ]; then
     jq \
         --arg gh "${GITHUB_TOKEN:-}" \
@@ -42,5 +50,5 @@ if [ -f "${PAYLOAD_DIR}/mcp_config.template.json" ]; then
         > "${WINDSURF_DIR}/mcp_config.json"
 fi
 
-# 3) hand off to the default Windsurf startup
+echo "[entrypoint] Handing off to CMD: $@"
 exec "$@" 

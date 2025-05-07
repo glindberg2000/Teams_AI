@@ -13,12 +13,16 @@ if [ ! -d "/workspaces/project/.venv" ]; then
   fi
 fi
 
-# 2. Source .env or export needed variables
+# 2. Robustly export env vars from .env (skip invalid lines)
 if [ -f "/workspaces/project/payload/.env" ]; then
-  echo "[setup] Sourcing /workspaces/project/payload/.env..."
-  set -a
-  source /workspaces/project/payload/.env
-  set +a
+  echo "[setup] Exporting env vars from /workspaces/project/payload/.env..."
+  while IFS='=' read -r key value; do
+    # Skip comments and empty lines
+    if [[ "$key" =~ ^#.*$ ]] || [[ -z "$key" ]]; then
+      continue
+    fi
+    export "$key"="$value"
+  done < /workspaces/project/payload/.env
 else
   echo "[setup] WARNING: /workspaces/project/payload/.env not found."
 fi
@@ -41,7 +45,8 @@ fi
 
 # 5. Install mcp-discord in the container venv
 cd /workspaces/project/mcp-discord
-/workspaces/project/.venv/bin/python -m pip install -e .
+# Try editable install, fall back to standard if not supported
+/workspaces/project/.venv/bin/python -m pip install -e . || /workspaces/project/.venv/bin/python -m pip install .
 cd /workspaces/project
 
 # 6. Clone main project repo if not present

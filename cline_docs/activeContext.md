@@ -1,5 +1,21 @@
 # Active Context
 
+## What I'm Working On Now
+- Restored `.devcontainer` and Dockerfile generation for all session containers via `team_cli.py`.
+- Verified that session creation now produces correct container configs and scripts for each agent.
+- Preparing to streamline the setup of `mcp-discord` inside session containers, so Discord MCP server can be run without manual path edits.
+
+## Recent Changes
+- `.devcontainer` and all scripts restored from template to project root and committed.
+- Confirmed that `create-session` and `create-crew` now generate container configs as before.
+- Debugged and fixed propagation of env/config fields for Slack, Discord, etc.
+
+## Next Steps
+- Analyze current MCP config and local repo path handling for `mcp-discord`.
+- Propose a plan to automate cloning the `mcp-discord` repo into each session container (if not present).
+- Update the MCP config generator to set the correct command path for `mcp-discord` (prefer local, fallback to global if available).
+- Document the streamlined workflow for Discord MCP server setup in session containers.
+
 ## Current State
 - Discord MCP integration is fully operational using the [mcp-discord](https://github.com/netixc/mcp-discord) bridge.
 - The bridge can be run manually or invoked directly by Cursor/MCP if configured with the correct command and environment variables in `.cursor/mcp.json`.

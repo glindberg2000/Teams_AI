@@ -60,7 +60,7 @@ SESSIONS_DIR = Path("teams")
 ROLES_DIR = Path("roles")
 TEAM_CONFIG = Path("team/crew.yaml")
 TEAM_ENV = Path("teams/default/config/env")
-DEVCONTAINER_DIR = Path(".devcontainer")
+DEVCONTAINER_DIR = Path("templates/devcontainer")
 
 
 # --- Utility Functions ---

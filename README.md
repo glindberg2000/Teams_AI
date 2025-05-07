@@ -217,4 +217,31 @@ PM_GUARDIAN_DISCORD_GUILD_ID=your-guild-id
 - Copy the Bot Token and Client ID from the application page
 - (Optional) Get your server's Guild ID by enabling Developer Mode in Discord and right-clicking your server
 
-For more details, see the Discord section in `tools/scaffold_team.py` or the project documentation. 
+For more details, see the Discord section in `tools/scaffold_team.py` or the project documentation.
+
+## Devcontainer SSH Key & GitHub Access Flow
+
+### How it Works
+- The team CLI generates a unique SSH keypair for each session/agent on the host machine.
+- The public key is located at: `teams/<project>/sessions/<role>/payload/.ssh/id_ed25519.pub` (or `id_rsa.pub`)
+- The private key is also in the same directory.
+- When you launch a devcontainer, the `restore_payload.sh` script copies the keypair into `/root/.ssh/` inside the container.
+- This allows the container to use SSH for git operations (clone, push, pull, PRs) as the agent.
+
+### How to Enable GitHub Access
+1. **Copy the public key** from the payload directory (see above).
+2. **Add it to your GitHub account:**
+   - Go to GitHub → Settings → SSH and GPG keys → New SSH key
+   - Paste the public key, give it a descriptive title (e.g., "LedgerFlow Devcontainer Key"), and save.
+3. **Ensure the GitHub user is a collaborator or org member** with access to the repo.
+4. **Launch the container.** The restore script will ensure the key is in place for SSH authentication.
+5. **Test with:**
+   ```
+   ssh -T git@github.com
+   ```
+   You should see a success message.
+
+### Notes
+- The key does NOT have to be generated inside the container; it just needs to be present and match the public key on GitHub.
+- The restore script also copies `.env`, `mcp_config.json`, and docs as needed.
+- This flow enables seamless SSH-based git operations and PR creation from inside the devcontainer. 

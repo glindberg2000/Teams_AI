@@ -1,4 +1,4 @@
-FROM node:20-bullseye
+FROM mcr.microsoft.com/devcontainers/python:0-3.11-bullseye
 
 # system deps + jq
 RUN apt-get update && \
@@ -18,4 +18,4 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["sleep", "infinity"]  # Windsurf will override with its own server start 
+CMD sleep infinity  # Windsurf will override with its own server start 
