@@ -47,14 +47,26 @@
         "taskmaster-ai": {
             "command": "npx",
             "args": [
-                "-p",
-                "@modelcontextprotocol/server-taskmaster",
-                "-c",
-                "mcp-server-taskmaster"
+                "-y",
+                "--package=task-master-ai",
+                "task-master-ai"
             ],
             "env": {
                 "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
                 "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
+            }
+        },
+        "discord": {
+            "command": "/workspaces/project/.venv/bin/mcp-discord",
+            "args": [],
+            "env": {
+                "DISCORD_TOKEN": "${DISCORD_TOKEN}",
+                "DISCORD_CLIENT_ID": "${DISCORD_CLIENT_ID}",
+                "DISCORD_GUILD_ID": "${DISCORD_GUILD_ID}",
+                "DISCORD_CHANNEL_ID": "${DISCORD_CHANNEL_ID}",
+                "DISCORD_BOT_PREFIX": "!",
+                "DISCORD_LOG_LEVEL": "info",
+                "DEFAULT_SERVER_ID": "${DISCORD_GUILD_ID}"
             }
         }
     }
