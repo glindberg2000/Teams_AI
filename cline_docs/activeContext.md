@@ -14,6 +14,7 @@
   - Upgrade npm to v9 (stable for npx usage)
   - Remove any global npx v10+ binary to prevent version drift
 - Updated `templates/devcontainer/scripts/mcp_config.template.json` to use the `npx -p ... -c ...` pattern for all MCP servers, ensuring compatibility with npx 9+ and preventing argument parsing bugs.
+- All role-level mcp_config.template.json files have been updated to match the master template, ensuring correct Discord and Taskmaster MCP config for all session generations.
 
 ## Next Steps
 - Analyze current MCP config and local repo path handling for `mcp-discord`.
