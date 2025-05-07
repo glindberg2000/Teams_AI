@@ -9,12 +9,19 @@
 - `.devcontainer` and all scripts restored from template to project root and committed.
 - Confirmed that `create-session` and `create-crew` now generate container configs as before.
 - Debugged and fixed propagation of env/config fields for Slack, Discord, etc.
+- Updated `templates/devcontainer/Dockerfile` to always:
+  - Install Node.js 20 (LTS)
+  - Upgrade npm to v9 (stable for npx usage)
+  - Remove any global npx v10+ binary to prevent version drift
+- Updated `templates/devcontainer/scripts/mcp_config.template.json` to use the `npx -p ... -c ...` pattern for all MCP servers, ensuring compatibility with npx 9+ and preventing argument parsing bugs.
 
 ## Next Steps
 - Analyze current MCP config and local repo path handling for `mcp-discord`.
 - Propose a plan to automate cloning the `mcp-discord` repo into each session container (if not present).
 - Update the MCP config generator to set the correct command path for `mcp-discord` (prefer local, fallback to global if available).
 - Document the streamlined workflow for Discord MCP server setup in session containers.
+- Reconfigure any broken MCP servers in existing sessions to use the new config pattern.
+- Rebuild containers for all teams/sessions to ensure the new Dockerfile and MCP config are in effect.
 
 ## Current State
 - Discord MCP integration is fully operational using the [mcp-discord](https://github.com/netixc/mcp-discord) bridge.

@@ -3,16 +3,20 @@
         "puppeteer": {
             "command": "npx",
             "args": [
-                "-y",
-                "@modelcontextprotocol/server-puppeteer"
+                "-p",
+                "@modelcontextprotocol/server-puppeteer",
+                "-c",
+                "mcp-server-puppeteer"
             ],
             "env": {}
         },
         "github": {
             "command": "npx",
             "args": [
-                "-y",
-                "@modelcontextprotocol/server-github"
+                "-p",
+                "@modelcontextprotocol/server-github",
+                "-c",
+                "mcp-server-github"
             ],
             "env": {
                 "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
@@ -21,8 +25,10 @@
         "slack": {
             "command": "npx",
             "args": [
-                "-y",
-                "@modelcontextprotocol/server-slack"
+                "-p",
+                "@modelcontextprotocol/server-slack",
+                "-c",
+                "mcp-server-slack"
             ],
             "env": {
                 "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
@@ -32,16 +38,19 @@
         "context7": {
             "command": "npx",
             "args": [
-                "-y",
-                "@upstash/context7-mcp@latest"
+                "-p",
+                "@upstash/context7-mcp@latest",
+                "-c",
+                "context7-mcp"
             ]
         },
         "taskmaster-ai": {
             "command": "npx",
             "args": [
-                "-y",
-                "task-master-ai",
-                "mcp"
+                "-p",
+                "@modelcontextprotocol/server-taskmaster",
+                "-c",
+                "mcp-server-taskmaster"
             ],
             "env": {
                 "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
