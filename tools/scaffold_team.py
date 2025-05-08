@@ -177,6 +177,7 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         "# Project and Integration Repos",
         "PROJECT_REPO_URL=  # Required: Main project repo URL (e.g. https://github.com/yourorg/yourproject.git)",
         "MCP_DISCORD_REPO_URL=  # Required: Discord MCP repo URL (e.g. https://github.com/netixc/mcp-discord.git)",
+        "MCP_DISCORD_REPO_BRANCH=main  # Optional: Branch to clone for Discord MCP (default: main)",
         "",
         "# Documentation Configuration",
         "INCLUDE_GLOBAL_DOCS=true",
@@ -280,6 +281,7 @@ def generate_env_template(project, roles, dry_run=False):
         "# Project and Integration Repos",
         "PROJECT_REPO_URL=${PROJECT_REPO_URL}",
         "MCP_DISCORD_REPO_URL=${MCP_DISCORD_REPO_URL}",
+        "MCP_DISCORD_REPO_BRANCH=main  # Optional: Branch to clone for Discord MCP (default: main)",
         "",
     ]
 
@@ -342,6 +344,7 @@ def generate_checklist(project, roles, dry_run=False):
         "## Required Repositories",
         "- [ ] **PROJECT_REPO_URL**: Main project repo URL (e.g. https://github.com/yourorg/yourproject.git)",
         "- [ ] **MCP_DISCORD_REPO_URL**: Discord MCP repo URL (e.g. https://github.com/netixc/mcp-discord.git)",
+        "- [ ] **MCP_DISCORD_REPO_BRANCH**: Branch to clone for Discord MCP (default: main)",
         "",
         "## Core Setup",
         "",
@@ -635,6 +638,16 @@ def main():
         print(f"2. Run 'python tools/team_cli.py create-crew --env-file {env_file}'")
         print(
             f"3. Follow the checklist at {checklist if not args.dry_run else 'teams/' + project + '/config/checklist.md'}"
+        )
+        print("\n[IMPORTANT] After scaffolding or team creation:")
+        print("- Go to https://discord.com/developers/applications/")
+        print("- Select your bot, go to the Bot section")
+        print(
+            "- Enable SERVER MEMBERS INTENT, PRESENCE INTENT, and MESSAGE CONTENT INTENT as needed"
+        )
+        print("- Save changes and restart your bot/container")
+        print(
+            "- If you set DISCORD_CHANNEL_ID in your .env, the bot will use it as the default channel. If left blank, the bot will attempt to find channels dynamically (if supported by the code). If you encounter errors, set this to a valid channel ID from your server."
         )
 
         # For each role, generate the Slackbot manifest in the config directory

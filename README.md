@@ -244,4 +244,22 @@ For more details, see the Discord section in `tools/scaffold_team.py` or the pro
 ### Notes
 - The key does NOT have to be generated inside the container; it just needs to be present and match the public key on GitHub.
 - The restore script also copies `.env`, `mcp_config.json`, and docs as needed.
-- This flow enables seamless SSH-based git operations and PR creation from inside the devcontainer. 
+- This flow enables seamless SSH-based git operations and PR creation from inside the devcontainer.
+
+## Discord Bot Setup
+
+After running `scaffold_team.py` or `team_cli.py create-crew`, you must:
+
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications/)
+2. Select your bot application
+3. In the left sidebar, click **Bot**
+4. Enable the following Privileged Gateway Intents as needed:
+   - **SERVER MEMBERS INTENT**
+   - **PRESENCE INTENT**
+   - **MESSAGE CONTENT INTENT**
+5. Click **Save Changes**
+6. Restart your bot/container
+
+### Discord Channel ID
+- If you set `DISCORD_CHANNEL_ID` in your `.env`, the bot will use this as the default channel for messages.
+- If left blank, the bot will attempt to find channels dynamically (if supported by the code). If you encounter errors, set this to a valid channel ID from your server. 

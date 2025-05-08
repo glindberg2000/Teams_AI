@@ -55,7 +55,7 @@ from pathlib import Path
 import yaml
 import json
 from typing import Dict, Any
-from tools.scaffold_team import copy_cline_templates_and_rules
+from scaffold_team import copy_cline_templates_and_rules
 
 SESSIONS_DIR = Path("teams")
 ROLES_DIR = Path("roles")
@@ -333,7 +333,7 @@ def create_session(args):
         f"{role_prefix}_EMAIL": "GIT_USER_EMAIL",
         f"{role_prefix}_SLACK_TOKEN": "SLACK_BOT_TOKEN",
         f"{role_prefix}_GITHUB_TOKEN": "GITHUB_PERSONAL_ACCESS_TOKEN",
-        f"{role_prefix}_DISCORD_TOKEN": "DISCORD_TOKEN",
+        f"{role_prefix}_DISCORD_BOT_TOKEN": "DISCORD_TOKEN",
         f"{role_prefix}_DISCORD_CLIENT_ID": "DISCORD_CLIENT_ID",
         f"{role_prefix}_DISCORD_GUILD_ID": "DISCORD_GUILD_ID",
     }
@@ -847,6 +847,16 @@ def create_crew(args):
     print("1. Set ANTHROPIC_API_KEY in each session's .env file")
     print("2. Set PERPLEXITY_API_KEY in each session's .env file (optional)")
     print_reminders()
+    print("\n[IMPORTANT] After crew creation:")
+    print("- Go to https://discord.com/developers/applications/")
+    print("- Select your bot, go to the Bot section")
+    print(
+        "- Enable SERVER MEMBERS INTENT, PRESENCE INTENT, and MESSAGE CONTENT INTENT as needed"
+    )
+    print("- Save changes and restart your bot/container")
+    print(
+        "- If you set DISCORD_CHANNEL_ID in your .env, the bot will use it as the default channel. If left blank, the bot will attempt to find channels dynamically (if supported by the code). If you encounter errors, set this to a valid channel ID from your server."
+    )
 
 
 def propagate_cline_docs_shared(project, roles):
