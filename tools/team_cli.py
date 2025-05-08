@@ -358,6 +358,7 @@ def create_session(args):
         "PROJECT_NAME",
         "PROJECT_REPO_URL",
         "MCP_DISCORD_REPO_URL",
+        "MCP_DISCORD_REPO_BRANCH",
     ]
     for k in generic_keys:
         if k in template_vars:
@@ -790,6 +791,9 @@ def create_crew(args):
                 f"TEAM_NAME={team_env.get('TEAM_NAME', project_name)}",
                 f"TEAM_DESCRIPTION={team_env.get('TEAM_DESCRIPTION', project_name + ' team')}",
                 f"PROJECT_NAME={project_name}",
+                f"PROJECT_REPO_URL={team_env.get('PROJECT_REPO_URL', '')}",
+                f"MCP_DISCORD_REPO_URL={team_env.get('MCP_DISCORD_REPO_URL', '')}",
+                f"MCP_DISCORD_REPO_BRANCH={team_env.get('MCP_DISCORD_REPO_BRANCH', 'main')}",
                 # Session-specific variables
                 f"GIT_USER_NAME={session_name}",
                 f"GIT_USER_EMAIL={config['email']}",
