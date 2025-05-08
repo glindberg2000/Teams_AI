@@ -126,6 +126,17 @@ else
     log "WARNING: No cline_docs_shared directory found at /workspaces/project/payload/cline_docs_shared"
 fi
 
+# Restore .windsurf/rules
+if [ -d "/workspaces/project/payload/.windsurf/rules" ]; then
+    log "Found .windsurf/rules, restoring..."
+    mkdir -p /workspaces/project/.windsurf
+    rm -rf /workspaces/project/.windsurf/rules
+    cp -r /workspaces/project/payload/.windsurf/rules /workspaces/project/.windsurf/rules
+    log ".windsurf/rules restored successfully"
+else
+    log "WARNING: No .windsurf/rules directory found at /workspaces/project/payload/.windsurf/rules"
+fi
+
 # Verify critical files
 log "Verifying critical files..."
 MISSING_FILES=0
