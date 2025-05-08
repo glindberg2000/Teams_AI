@@ -55,6 +55,7 @@ from pathlib import Path
 import yaml
 import json
 from typing import Dict, Any
+from tools.scaffold_team import copy_cline_templates_and_rules
 
 SESSIONS_DIR = Path("teams")
 ROLES_DIR = Path("roles")
@@ -836,6 +837,8 @@ def create_crew(args):
             continue
 
     # After all session payloads are created
+    # Restore Cline Memory Bank templates and .windsurfrules to each session payload
+    copy_cline_templates_and_rules(project_name, [role for role in sessions.keys()])
     propagate_cline_docs_shared(project_name, [role for role in sessions.keys()])
     print("[INFO] All session payloads have received the finalized cline_docs_shared.")
 
