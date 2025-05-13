@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "task-master-ai": "^0.12.1"
+  },
+  "devDependencies": {
+    "@executeautomation/playwright-mcp-server": "^1.0.5",
+    "playwright": "^1.52.0"
   }
 }

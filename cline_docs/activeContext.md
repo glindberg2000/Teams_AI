@@ -44,4 +44,56 @@
 
 - Fill out `teams/{project}/cline_docs_shared/` after scaffolding, before crew creation.
 - Crew creation copies the filled shared docs into each session's payload.
-- See productContext.md for full workflow details. 
+- See productContext.md for full workflow details.
+
+## Playwright MCP Server Setup (Working Method)
+
+### Problem
+- Playwright MCP server failed to start using npm/npx install methods (missing `androidServerImpl`, server hang, or no tools registered).
+- Multiple attempts with local and global npm installs did not resolve the issue.
+
+### Solution (Build from Source)
+1. **Clone the Playwright MCP repo:**
+   ```sh
+   git clone https://github.com/executeautomation/mcp-playwright.git
+   cd mcp-playwright
+   ```
+2. **Install dependencies:**
+   ```sh
+   npm install
+   ```
+3. **Build the code:**
+   ```sh
+   npm run build
+   npm link
+   ```
+4. **(Optional) You can run the server directly from the repo directory:**
+   ```sh
+   npx --directory /path/to/mcp-playwright run @executeautomation/playwright-mcp-server
+   ```
+
+### MCP Config (Unchanged)
+The following MCP config was used and did not need to be changed:
+```json
+"playwright": {
+  "command": "npx",
+  "args": [
+    "-y",
+    "@smithery/cli@latest",
+    "run",
+    "@executeautomation/playwright-mcp-server",
+    "--client",
+    "cursor",
+    "--key",
+    "d716f5ef-5e41-4f78-b816-d599bc5293e6"
+  ]
+}
+```
+
+### Result
+- After building from source, the MCP server started successfully.
+- The MCP indicator turned green and tools are now available in Cursor.
+
+---
+
+**Next:** Run a test using an MCP tool call to verify functionality. 
