@@ -200,3 +200,85 @@ For proper integration between scaffold_team.py and team-cli.py, variables must 
 - Fill out `teams/{project}/cline_docs_shared/` after scaffolding, before crew creation.
 - Crew creation copies the filled shared docs into each session's payload.
 - See productContext.md for full workflow details. 
+
+# LedgerFlow AI Team Dashboard UI: Technical Design
+
+## System Architecture
+- **Frontend:** React (TypeScript, modern component library, e.g., MUI or AntD)
+- **Backend:** FastAPI (Python), serving a REST/JSON API
+- **Integration:**
+  - Backend imports and calls functions from `team_cli.py` and `scaffold_team.py` directly (refactored for API use)
+  - Optionally invokes CLI as subprocess for legacy compatibility
+  - Reads/writes config files in `sessions/`, `roles/`, `teams/` directories
+- **Storage:**
+  - **Phase 1:** File/folder-based (as today)
+  - **Phase 2:** Optional DB (SQLite/Postgres) for configs, secrets, and audit logs (see below)
+
+## Data Flow & Process
+- **Current CLI Workflow:**
+  1. Run scaffold to generate templates and .env files
+  2. Manually fill in required fields/secrets
+  3. Run team-cli to generate sessions/containers (crew create)
+  4. Launch containers, run restore scripts
+- **Dashboard Workflow (Proposed):**
+  1. User starts new project/crew in dashboard
+  2. Dashboard runs scaffold logic, presents all required fields visually
+  3. User fills in all fields/secrets in browser (with validation, hints, RBAC)
+  4. Dashboard can save progress (drafts) before generating containers
+  5. When ready, dashboard calls team-cli logic to generate sessions/containers
+  6. User can view/edit all generated configs, download, or launch containers
+  7. All changes are tracked (audit log/versioning)
+
+- **Iteration:**
+  - Dashboard allows iterative editing of configs before finalizing/creating containers
+  - No need to re-run CLI for every change; dashboard can update files or DB directly
+
+## File vs. Database Storage
+- **File-based (current):**
+  - Pros: Simple, transparent, easy to back up, matches current workflow
+  - Cons: Harder to track changes, no audit log, no concurrent editing, limited search/filter
+- **DB-backed (future/optional):**
+  - Pros: Enables versioning, audit logs, RBAC, concurrent edits, search/filter, API-driven
+  - Cons: Migration effort, must sync with file system for container launches
+- **Migration Path:**
+  - Start with file-based for MVP (read/write as today)
+  - Add DB layer for configs/secrets/audit as usage grows
+  - Provide sync/export to files for container compatibility
+
+## API Endpoints (Backend)
+- `POST /api/scaffold` - Start new project/crew, return required fields
+- `GET /api/fields` - List all required fields for a project/crew
+- `POST /api/fields` - Save/update field values (draft or final)
+- `POST /api/crew` - Generate sessions/containers (calls team-cli)
+- `GET /api/configs` - List/view all generated configs
+- `PUT /api/configs/{id}` - Edit a config (env, MCP, etc.)
+- `GET /api/status` - Get health/status of all containers/agents
+- `GET /api/secrets` - List/view secrets (RBAC enforced)
+- `POST /api/secrets` - Add/update secrets
+- `GET /api/audit` - View audit log/version history
+
+## Frontend Structure (React)
+- **Wizard for crew/session creation** (stepper UI, validation, hints)
+- **Config dashboard** (list, view, edit all configs)
+- **Secrets vault** (secure, RBAC, add/rotate)
+- **Status/health dashboard** (real-time, drill-down to logs/metrics)
+- **Audit/versioning view**
+- **Download/export/share actions**
+
+## Security & Extensibility
+- All secrets encrypted at rest (file or DB)
+- RBAC for all sensitive actions (frontend and backend)
+- Audit logging for all config/secret changes
+- API-first design for future integrations (plugins, chat, metrics, etc.)
+- Modular backend: new agent types, config formats, or workflows can be added as plugins
+
+## Deep Thoughts & Recommendations
+- **Unifying the Flow:** The dashboard can present all required fields (from scaffold/team-cli) in a single UI, allowing users to fill in everything before generating containers. This removes the need for manual file editing and multiple CLI runs.
+- **Drafts & Iteration:** Users can save drafts, iterate, and only "commit" when ready to generate containers. This is a major UX improvement over the current process.
+- **DB Migration:** Start with file-based for MVP, but design API and frontend to support a future DB layer (for audit, RBAC, search, etc.).
+- **CLI Integration:** Refactor CLI logic to be importable and API-friendly (no sys.exit, use exceptions/returns, accept dicts not argparse.Namespace).
+- **Extensibility:** Design both backend and frontend for plugins/extensions (e.g., new agent types, integrations, dashboards).
+
+---
+
+This design will allow the dashboard to streamline and unify the LedgerFlow AI Team workflow, while remaining compatible with existing scripts and future-proof for scale and compliance. 

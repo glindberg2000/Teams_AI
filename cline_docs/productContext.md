@@ -108,4 +108,62 @@
 - After scaffolding a team, fill out `teams/{project}/cline_docs_shared/` with all required shared context (product, system, tech, progress) before running crew creation.
 - During crew creation, the filled `cline_docs_shared/` is copied into each session's payload for all roles.
 - Each role then fills out their own `cline_docs/` as they work.
-- Never edit the templates in `roles/_templates/` directly; always use the team-level shared docs as the source of truth before crew creation. 
+- Never edit the templates in `roles/_templates/` directly; always use the team-level shared docs as the source of truth before crew creation.
+
+# LedgerFlow AI Team Dashboard
+
+## Why This Project Exists
+
+The LedgerFlow AI Team Dashboard is designed to provide a unified, visual interface for managing all aspects of the LedgerFlow AI Team platform. While the current workflow relies on CLI tools and manual script editing, the dashboard empowers both technical and non-technical users to:
+- Configure agent scaffolding and session creation visually
+- Manage and review all generated configuration files and secrets
+- Monitor the health and status of all containers and agents
+- Streamline onboarding and reduce errors in environment setup
+
+## What Problems It Solves
+- Reduces friction and errors in complex multi-agent setup
+- Makes environment and secret management accessible to non-engineers
+- Provides a single source of truth for all key configs and session state
+- Enables rapid troubleshooting and auditing of agent/container status
+- Bridges the gap between CLI automation and user-friendly operations
+
+## How It Should Work
+
+### Key Features
+- **Visual Crew/Session Creation:**
+  - Wizard-style UI for creating new agent sessions, teams, and roles
+  - Form-based input for all required parameters (names, roles, repo URLs, tokens, etc.)
+  - Option to generate or upload SSH keys and secrets securely
+- **Config Management:**
+  - Dashboard view of all generated configs (env, SSH, MCP, .windsurfrules, etc.)
+  - Inline editing with validation and version history
+  - Download/export and secure sharing options
+- **Container/Agent Status:**
+  - Real-time status/health view for all containers and agents
+  - Visual indicators for errors, missing configs, or unhealthy agents
+  - Quick links to logs, metrics, and troubleshooting tools
+- **Secrets & Key Management:**
+  - Secure vault for managing sensitive values (API keys, tokens, SSH keys)
+  - Role-based access control for secret visibility and editing
+- **Integration & Extensibility:**
+  - Hooks into existing CLI and automation scripts (team-cli, setup_workspace.sh, etc.)
+  - API for future integrations (logs, chat, metrics, etc.)
+  - Modular design for adding new agent types or workflows
+
+### User Stories
+- As a project manager, I want to create a new AI agent crew without using the CLI, so I can onboard new projects quickly.
+- As a developer, I want to review and edit the .env and MCP config for a session in the browser, so I can debug issues faster.
+- As a security lead, I want to audit all secrets and keys in one place, so I can ensure compliance and best practices.
+- As an operator, I want to see which containers or agents are unhealthy, so I can take action before users are impacted.
+
+### High-Level Implementation Notes
+- **Frontend:** Modern web UI (React, Vue, or Svelte) with responsive design
+- **Backend:** Python FastAPI or Node.js server, reusing existing CLI logic where possible
+- **Security:** All secrets encrypted at rest; RBAC for sensitive actions
+- **Integration:** Calls out to team-cli and setup scripts via API or subprocess
+- **Deployment:** Can run as a container alongside the rest of the platform
+- **Extensibility:** Plugin system for new agent types, config formats, or integrations
+
+---
+
+This dashboard will make LedgerFlow AI Team accessible, auditable, and manageable for all stakeholders, accelerating adoption and reducing operational risk. 
