@@ -166,4 +166,25 @@ The LedgerFlow AI Team Dashboard is designed to provide a unified, visual interf
 
 ---
 
-This dashboard will make LedgerFlow AI Team accessible, auditable, and manageable for all stakeholders, accelerating adoption and reducing operational risk. 
+This dashboard will make LedgerFlow AI Team accessible, auditable, and manageable for all stakeholders, accelerating adoption and reducing operational risk.
+
+## Task Master Team Workflow (Recommended)
+
+- **Single Source of Truth:** All project tasks are tracked in a shared `tasks/tasks.json` file in the repo.
+- **Everyone Contributes:** Each team member pulls the latest file, updates their own tasks (status, subtasks, notes), and commits/pushes changes.
+- **PRs for Major Changes:** For big refactors or new task breakdowns, use a branch and PR so others can review and resolve conflicts before merging.
+- **Merge Conflicts:** If two people edit the same task, git will prompt for a merge. Use a JSON-aware diff/merge tool to resolve.
+- **Best Practices:**
+  - Always `git pull` before editing tasks
+  - Make small, focused commits
+  - Communicate before major changes
+  - Use PRs for structural changes
+- **Quickstart for New Users:**
+  1. Run `task-master list --with-subtasks` to see all tasks
+  2. Run `task-master show <id>` to view a specific task
+  3. Run `task-master set-status --id=<id> --status=in-progress` when you start a task
+  4. Run `task-master set-status --id=<id> --status=done` when you finish
+  5. Add subtasks or notes as needed with `task-master update-task` or `expand --id=<id>`
+  6. Commit and push your changes to git
+
+This workflow empowers the whole team to collaborate on planning, tracking, and breaking down work, while keeping a single, auditable source of truth for all project tasks. 
