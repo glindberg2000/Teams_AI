@@ -147,6 +147,24 @@ The LedgerFlow AI Team Dashboard UI will provide a modern, visual interface for 
 - Dashboard generates the appropriate config and scripts for the selected type
 - User can review/edit before committing
 
+### Team Communication System Selection
+- Users can select the communication system for the team/project:
+  - Discord (via mcp-discord)
+  - Slack (via mcp-slack)
+  - Internal chat (simple built-in room chat, optional future)
+- Communication system selection determines:
+  - Which MCP server/tools are configured for each session
+  - What keys/tokens are required (Discord bot token, Slack token, etc.)
+  - Which docs/instructions are included for onboarding
+- Dashboard UI provides a selection wizard for communication system during team/project setup
+- All config templates/scripts are modular to support multiple comms systems
+- Users can preview and edit the generated comms config before finalizing
+
+#### User Flow Update
+- During team/project setup, user selects communication system
+- Dashboard prompts for required keys/tokens and docs for the selected system
+- Generated session configs and docs reflect the chosen comms system
+
 ---
 
 This expanded flow ensures the dashboard supports the full lifecycle: role/template management, team/project config, doc inclusion, and final session output—fully viewable, editable, and auditable before deployment. 
