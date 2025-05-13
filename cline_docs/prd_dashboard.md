@@ -35,8 +35,9 @@ The LedgerFlow AI Team Dashboard UI will provide a modern, visual interface for 
   1. User clicks "Create Crew/Session"
   2. Fills out form (names, roles, env vars, secrets, etc.)
   3. Optionally uploads or generates SSH keys
-  4. Submits; backend calls CLI logic to scaffold session(s)
-  5. User sees confirmation and can view/edit generated configs
+  4. Selects container type for each session (or applies to all)
+  5. Submits; backend calls CLI logic to scaffold session(s)
+  6. User sees confirmation and can view/edit generated configs
 - **Config Editing:**
   1. User selects a session/container
   2. Views all configs (env, MCP, SSH, etc.)
@@ -127,6 +128,24 @@ The LedgerFlow AI Team Dashboard UI will provide a modern, visual interface for 
 - Integration with external secret stores (optional, future)
 - API endpoints for all CRUD operations (roles, team, sessions, docs)
 - UI should guide user through required/optional fields with validation and tooltips
+
+### Container Type Selection
+- Users can select the type of container to generate for each session or team:
+  - Windsurf (current default)
+  - Cursor
+  - Claude Code
+  - Codex
+  - Cline
+  - (Extensible: add new container types as needed)
+- Container type determines the generated `.devcontainer/` config, startup scripts, and any IDE-specific files
+- Dashboard UI provides a dropdown or selection wizard for container type during session/team creation
+- All config templates and scripts are modular to support multiple container types
+- Users can preview and edit the generated container config before finalizing
+
+#### User Flow Update
+- During crew/session creation, user selects container type for each session (or applies to all)
+- Dashboard generates the appropriate config and scripts for the selected type
+- User can review/edit before committing
 
 ---
 
