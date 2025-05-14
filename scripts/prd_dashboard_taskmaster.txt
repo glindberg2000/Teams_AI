@@ -1,0 +1,39 @@
+LedgerFlow AI Team Dashboard MVP
+
+Overview:
+Build a visual dashboard (React frontend, FastAPI backend) for configuring, managing, and monitoring LedgerFlow AI Team projects. The MVP will use file-based storage for all configs, secrets, and docs, with a future migration path to a database.
+
+Key Features:
+- Visual wizard for team/crew/session creation
+- CRUD for roles/templates (name, prompt, MCP config, docs)
+- CRUD for team/project config (keys, secrets, docs, role assignments)
+- Config editing and preview (file-based, with validation)
+- Container type selection (windsurf, cursor, Claude Code, etc.)
+- Communication system selection (Discord, Slack, internal chat)
+- Secure secrets/key management (file-based, encrypted at rest)
+- Docs inclusion and editing (project, role, session)
+- Final session output: viewable/editable directories before export
+- Integration with existing CLI logic (team_cli.py, scaffold_team.py) via direct import or subprocess
+- All changes tracked (audit/versioning, file-based for MVP)
+
+MVP Milestones:
+1. Scaffold FastAPI backend and React frontend
+2. Implement API endpoints for CRUD, config, and session generation (file-based)
+3. Build UI flows for role/team CRUD, config editing, doc management, and container preview
+4. Modularize container and comms config templates
+5. Implement secure file-based secrets vault
+6. Integrate with CLI logic for scaffolding and crew creation
+7. Add audit/versioning (file-based)
+8. Plan for future DB migration (not in MVP)
+
+Constraints:
+- All configs, secrets, and docs stored as files/folders for MVP
+- CLI and container scripts must remain compatible with file-based output
+- API and frontend should be designed to support future DB migration
+
+Success Criteria:
+- Users can create, edit, and preview teams, roles, sessions, and configs via the dashboard
+- All generated output is compatible with current CLI and container workflows
+- Secrets are stored securely (encrypted files)
+- UI is intuitive and supports all required flows (role CRUD, team config, docs, container/comms selection)
+- MVP is delivered quickly, with a clear path to future DB migration 

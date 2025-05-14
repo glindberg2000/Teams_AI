@@ -1,0 +1,33 @@
+{
+    "schemaVersion": 1,
+    "identificationMode": "shared-secret",
+    "secretIntendedOnlyForUsBy": "matrix-corporal",
+    "shared_secret": "supersecret",
+    "implementations": {
+        "rest": {
+            "enabled": false
+        }
+    },
+    "managedCommunityIds": [],
+    "policies": [
+        {
+            "id": "allow-all-for-admin",
+            "description": "Allows everything for the admin",
+            "userId": "@admin:matrix.local",
+            "allowRoomCreation": true,
+            "allowRoomJoining": true,
+            "allowRoomLeaving": true,
+            "allowDeactivate": true
+        },
+        {
+            "id": "allow-for-default-users",
+            "description": "Default permissions for users",
+            "userId": "*",
+            "allowRoomCreation": true,
+            "allowRoomJoining": true,
+            "allowRoomLeaving": true,
+            "allowDeactivate": true
+        }
+    ],
+    "hooks": []
+}

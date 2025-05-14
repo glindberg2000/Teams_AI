@@ -96,4 +96,75 @@ The following MCP config was used and did not need to be changed:
 
 ---
 
-**Next:** Run a test using an MCP tool call to verify functionality. 
+**Next:** Run a test using an MCP tool call to verify functionality.
+
+## Secrets Management Security Plan (Staged Approach)
+
+- **Current Phase (Local Dev, File-Based):**
+  - All setup files, including `.env` keys, are managed via the new web UI and stored in plain text.
+  - The app is only accessible locally; there is no external attack surface.
+  - `.env` and config files are included in `.gitignore` and must never be committed to version control.
+  - **Warning:** Do not use real production secrets in local development.
+
+- **Future Phase (DB Backend & External Access):**
+  - When migrating to a database backend and/or exposing the site externally, implement:
+    - Encryption at rest for secrets and sensitive config values.
+    - Secure key management (environment variables, secrets manager, or KMS).
+    - HTTPS for all web access.
+    - User authentication and access controls in the web UI.
+  - This staged approach allows for rapid development now, with a clear plan for robust security as the project evolves.
+
+# Playwright MCP Tool Activation (Post-Reboot)
+
+## Steps to Ensure Playwright MCP Tools Work in Cursor
+
+1. **Install/Update Playwright MCP and Smithery CLI**
+   ```sh
+   npm install -g @smithery/cli@latest @executeautomation/playwright-mcp-server@latest
+   ```
+   - Ensures you have the latest versions globally.
+
+2. **Check/Update MCP Config**
+   - Ensure your `~/.cursor/mcp.json` contains:
+     ```json
+     {
+       "mcpServers": {
+         "playwright": {
+           "command": "npx",
+           "args": [
+             "-y",
+             "@smithery/cli@latest",
+             "run",
+             "@executeautomation/playwright-mcp-server",
+             "--client",
+             "cursor",
+             "--key",
+             "<YOUR_SMITHERY_KEY>"
+           ]
+         }
+       }
+     }
+     ```
+   - Replace `<YOUR_SMITHERY_KEY>` with your actual key.
+
+3. **Start the MCP Server**
+   ```sh
+   npx -y @smithery/cli@latest run @executeautomation/playwright-mcp-server --client cursor --key <YOUR_SMITHERY_KEY>
+   ```
+   - Run this in a terminal and leave it open.
+
+4. **Restart Cursor/IDE**
+   - Fully quit and reopen Cursor after starting the MCP server.
+
+5. **Verify Tool Availability**
+   - Check Cursor's MCP tool list for Playwright tools (e.g., `playwright_navigate`).
+
+## Troubleshooting
+- Ensure Node.js is v18+ and npm is up to date.
+- Check for port conflicts and resolve them.
+- If tools do not appear, repeat steps 3 and 4.
+- If using a local install, run from the correct directory.
+- Check for errors in the MCP server terminal.
+
+---
+**Always use the Smithery CLI wrapper and correct key for Cursor integration.** 
