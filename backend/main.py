@@ -7,6 +7,8 @@ import os
 import json
 from pydantic import BaseModel
 from typing import Optional, Dict
+from fastapi.responses import JSONResponse
+import logging
 
 app = FastAPI()
 
@@ -17,6 +19,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
 
 @app.get("/health")
@@ -293,3 +297,71 @@ def delete_project_config(project: str):
         raise HTTPException(status_code=404, detail="Config not found")
     config_path.unlink()
     return {"status": "deleted", "project": project}
+
+
+@app.get("/api/teams")
+def list_teams():
+    # Always resolve teams dir relative to project root unless TEAMS_DIR is set
+    teams_dir = Path(os.environ.get("TEAMS_DIR", str(PROJECT_ROOT / "teams")))
+    abs_path = teams_dir.resolve()
+    print(f"[DEBUG] /api/teams: teams_dir absolute path: {abs_path}")
+    if not teams_dir.exists() or not teams_dir.is_dir():
+        print(
+            f"[DEBUG] /api/teams: Directory does not exist or is not a dir: {abs_path}"
+        )
+        return JSONResponse(content=[], status_code=200)
+    entries = list(teams_dir.iterdir())
+    print(f"[DEBUG] /api/teams: Directory entries: {[e.name for e in entries]}")
+    teams = []
+    for team_folder in entries:
+        if not team_folder.is_dir() or team_folder.name.startswith("_"):
+            continue
+        config_env = team_folder / "config" / "env"
+        name = team_folder.name
+        description = ""
+        if config_env.exists():
+            with open(config_env) as f:
+                for line in f:
+                    if line.startswith("TEAM_NAME="):
+                        name = line.strip().split("=", 1)[1]
+                    if line.startswith("TEAM_DESCRIPTION="):
+                        description = line.strip().split("=", 1)[1]
+        teams.append({"id": team_folder.name, "name": name, "description": description})
+    print(f"[DEBUG] /api/teams: Returning teams: {teams}")
+    return JSONResponse(content=teams)
+
+
+@app.get("/api/roles")
+def list_global_roles():
+    # Always resolve roles dir relative to project root unless ROLES_DIR is set
+    roles_dir = Path(os.environ.get("ROLES_DIR", str(PROJECT_ROOT / "roles")))
+    abs_path = roles_dir.resolve()
+    print(f"[DEBUG] /api/roles: roles_dir absolute path: {abs_path}")
+    if not roles_dir.exists() or not roles_dir.is_dir():
+        print(
+            f"[DEBUG] /api/roles: Directory does not exist or is not a dir: {abs_path}"
+        )
+        return JSONResponse(content=[], status_code=200)
+    roles = []
+    for role_folder in roles_dir.iterdir():
+        if not role_folder.is_dir() or role_folder.name.startswith("_"):
+            continue
+        name = role_folder.name
+        description = ""
+        overview_md = role_folder / "docs" / "role_overview.md"
+        if overview_md.exists():
+            try:
+                with open(overview_md) as f:
+                    lines = f.readlines()
+                    for line in lines:
+                        if line.strip() and not line.strip().startswith("#"):
+                            description = line.strip()
+                            break
+            except Exception as e:
+                print(f"[DEBUG] /api/roles: Error reading {overview_md}: {e}")
+                description = ""
+        else:
+            print(f"[DEBUG] /api/roles: Missing {overview_md}")
+        roles.append({"id": role_folder.name, "name": name, "description": description})
+    print(f"[DEBUG] /api/roles: Returning roles: {roles}")
+    return JSONResponse(content=roles)
