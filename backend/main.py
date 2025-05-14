@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Body
 from pathlib import Path
@@ -7,7 +7,7 @@ import os
 import json
 from pydantic import BaseModel
 from typing import Optional, Dict
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 import logging
 
 app = FastAPI()
@@ -365,3 +365,83 @@ def list_global_roles():
         roles.append({"id": role_folder.name, "name": name, "description": description})
     print(f"[DEBUG] /api/roles: Returning roles: {roles}")
     return JSONResponse(content=roles)
+
+
+@app.get("/api/role/{role}/overview")
+def get_role_overview(role: str):
+    overview_path = PROJECT_ROOT / "roles" / role / "docs" / "role_overview.md"
+    if not overview_path.exists():
+        return PlainTextResponse("", status_code=200)
+    return PlainTextResponse(overview_path.read_text())
+
+
+@app.get("/api/role/{role}/env-sample")
+def get_role_env_sample(role: str):
+    env_sample_path = PROJECT_ROOT / "roles" / role / ".env.sample"
+    if not env_sample_path.exists():
+        return JSONResponse(content="", status_code=200)
+    return env_sample_path.read_text()
+
+
+@app.get("/api/role/{role}/mcp-config")
+def get_role_mcp_config(role: str):
+    mcp_config_path = PROJECT_ROOT / "roles" / role / "mcp_config.template.json"
+    if not mcp_config_path.exists():
+        return JSONResponse(content="", status_code=200)
+    try:
+        with open(mcp_config_path) as f:
+            data = json.load(f)
+        return JSONResponse(content=data)
+    except Exception as e:
+        print(f"[DEBUG] /api/role/{{role}}/mcp-config: {e}")
+        return JSONResponse(content="", status_code=200)
+
+
+@app.put("/api/role/{role}/overview")
+def update_role_overview(role: str, content: str = Body(...)):
+    overview_path = PROJECT_ROOT / "roles" / role / "docs" / "role_overview.md"
+    overview_path.parent.mkdir(parents=True, exist_ok=True)
+    overview_path.write_text(content)
+    return {"status": "updated"}
+
+
+@app.put("/api/role/{role}/env-sample")
+def update_role_env_sample(role: str, content: str = Body(...)):
+    env_sample_path = PROJECT_ROOT / "roles" / role / ".env.sample"
+    env_sample_path.parent.mkdir(parents=True, exist_ok=True)
+    env_sample_path.write_text(content)
+    return {"status": "updated"}
+
+
+@app.put("/api/role/{role}/mcp-config")
+def update_role_mcp_config(role: str, content: str = Body(...)):
+    mcp_config_path = PROJECT_ROOT / "roles" / role / "mcp_config.template.json"
+    mcp_config_path.parent.mkdir(parents=True, exist_ok=True)
+    mcp_config_path.write_text(content)
+    return {"status": "updated"}
+
+
+@app.post("/api/role")
+def create_role_template(role: str = Body(...)):
+    role_dir = PROJECT_ROOT / "roles" / role
+    docs_dir = role_dir / "docs"
+    if role_dir.exists():
+        raise HTTPException(status_code=400, detail="Role already exists")
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    (role_dir / ".env.sample").write_text("# Fill in environment variables\n")
+    (role_dir / "mcp_config.template.json").write_text("{}\n")
+    (docs_dir / "role_overview.md").write_text(
+        f"# {role} Role Overview\n\nDescribe the role here.\n"
+    )
+    return {"status": "created", "role": role}
+
+
+@app.delete("/api/role/{role}")
+def delete_role_template(role: str):
+    import shutil
+
+    role_dir = PROJECT_ROOT / "roles" / role
+    if not role_dir.exists():
+        raise HTTPException(status_code=404, detail="Role not found")
+    shutil.rmtree(role_dir)
+    return {"status": "deleted", "role": role}
