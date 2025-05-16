@@ -49,6 +49,7 @@ import shutil
 # Constants
 DEFAULT_ROLES = ["pm_guardian", "python_coder", "reviewer"]
 ROLES_DIR = Path("roles")
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
 
 def capitalize_first_letters(s):
@@ -244,17 +245,19 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         )
 
     # Use new directory structure
-    config_dir = Path(f"teams/{project}/config")
+    config_dir = PROJECT_ROOT / "teams" / project / "config"
     env_file = config_dir / "env"
-
+    print(
+        f"[DEBUG] generate_env_file: config_dir={config_dir}, env_file={env_file}, dry_run={dry_run}"
+    )
     if not dry_run:
-        # Create directory if it doesn't exist
-        config_dir.mkdir(parents=True, exist_ok=True)
-
-        with open(env_file, "w") as f:
-            f.write("\n".join(content))
-        print(f"Created {env_file}")
-
+        try:
+            config_dir.mkdir(parents=True, exist_ok=True)
+            with open(env_file, "w") as f:
+                f.write("\n".join(content))
+            print(f"[DEBUG] Created {env_file}")
+        except Exception as e:
+            print(f"[ERROR] Failed to create env file: {e}")
     return env_file
 
 
@@ -312,15 +315,18 @@ def generate_env_template(project, roles, dry_run=False):
         return None
 
     # Create config directory structure
-    config_dir = Path(f"teams/{project}/config")
-    config_dir.mkdir(parents=True, exist_ok=True)
-
+    config_dir = PROJECT_ROOT / "teams" / project / "config"
     env_template_file = config_dir / "env.template"
-
-    with open(env_template_file, "w") as f:
-        f.write("\n".join(content))
-
-    print(f"Created {env_template_file} with team-cli compatible template")
+    print(
+        f"[DEBUG] generate_env_template: config_dir={config_dir}, env_template_file={env_template_file}, dry_run={dry_run}"
+    )
+    try:
+        config_dir.mkdir(parents=True, exist_ok=True)
+        with open(env_template_file, "w") as f:
+            f.write("\n".join(content))
+        print(f"[DEBUG] Created {env_template_file} with team-cli compatible template")
+    except Exception as e:
+        print(f"[ERROR] Failed to create env.template: {e}")
     return env_template_file
 
 
@@ -438,15 +444,18 @@ def generate_checklist(project, roles, dry_run=False):
         return None
 
     # Create config directory structure
-    config_dir = Path(f"teams/{project}/config")
-    config_dir.mkdir(parents=True, exist_ok=True)
-
+    config_dir = PROJECT_ROOT / "teams" / project / "config"
     checklist_file = config_dir / "checklist.md"
-
-    with open(checklist_file, "w") as f:
-        f.write("\n".join(content))
-
-    print(f"Created {checklist_file}")
+    print(
+        f"[DEBUG] generate_checklist: config_dir={config_dir}, checklist_file={checklist_file}, dry_run={dry_run}"
+    )
+    try:
+        config_dir.mkdir(parents=True, exist_ok=True)
+        with open(checklist_file, "w") as f:
+            f.write("\n".join(content))
+        print(f"[DEBUG] Created {checklist_file}")
+    except Exception as e:
+        print(f"[ERROR] Failed to create checklist.md: {e}")
     return checklist_file
 
 
@@ -495,14 +504,14 @@ def copy_cline_templates_and_rules(project, roles, dry_run=False):
     For each role, copy Cline Memory Bank templates and .windsurfrules into the session payload directory.
     Also, copy the shared cline docs template to the team root (not into each session payload).
     """
-    base_templates = Path("roles/_templates/cline_docs")
-    shared_templates = Path("roles/_templates/cline_docs_shared")
-    windsurfrules = Path("roles/_templates/.windsurfrules")
-    restore_script = Path("roles/_templates/restore_payload.sh")
-    windsurf_rules_src = Path("roles/_templates/.windsurf/rules")
+    base_templates = PROJECT_ROOT / "roles" / "_templates" / "cline_docs"
+    shared_templates = PROJECT_ROOT / "roles" / "_templates" / "cline_docs_shared"
+    windsurfrules = PROJECT_ROOT / "roles" / "_templates" / ".windsurfrules"
+    restore_script = PROJECT_ROOT / "roles" / "_templates" / "restore_payload.sh"
+    windsurf_rules_src = PROJECT_ROOT / "roles" / "_templates" / ".windsurf" / "rules"
 
     # Copy shared cline docs to team root if not already present
-    team_shared_dir = Path(f"teams/{project}/cline_docs_shared")
+    team_shared_dir = PROJECT_ROOT / "teams" / project / "cline_docs_shared"
     if team_shared_dir.exists():
         shutil.rmtree(team_shared_dir)
     shutil.copytree(shared_templates, team_shared_dir)
@@ -511,7 +520,7 @@ def copy_cline_templates_and_rules(project, roles, dry_run=False):
     )
 
     for role in roles:
-        payload_dir = Path(f"teams/{project}/sessions/{role}/payload")
+        payload_dir = PROJECT_ROOT / "teams" / project / "sessions" / role / "payload"
         # Copy per-role cline_docs
         role_cline_dir = payload_dir / "cline_docs"
         if role_cline_dir.exists():
@@ -521,7 +530,7 @@ def copy_cline_templates_and_rules(project, roles, dry_run=False):
         shutil.copy2(windsurfrules, payload_dir / ".windsurfrules")
         shutil.copy2(restore_script, payload_dir / "restore_payload.sh")
         # Copy .windsurf/rules
-        windsurf_rules_dst = payload_dir / ".windsurf/rules"
+        windsurf_rules_dst = payload_dir / ".windsurf" / "rules"
         if windsurf_rules_dst.exists():
             shutil.rmtree(windsurf_rules_dst)
         shutil.copytree(windsurf_rules_src, windsurf_rules_dst)
@@ -577,7 +586,7 @@ def main():
         domain = args.domain
         roles = args.roles.split(",") if args.roles else DEFAULT_ROLES
 
-    config_dir = Path(f"teams/{project}/config")
+    config_dir = PROJECT_ROOT / "teams" / project / "config"
     env_file = config_dir / "env"
 
     # --- Add Role Mode ---

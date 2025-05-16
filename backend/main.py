@@ -1,4 +1,11 @@
-from fastapi import FastAPI, HTTPException, Body, UploadFile, File
+import sys
+from pathlib import Path
+
+# Ensure the project root is in sys.path so 'tools' can be imported
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from fastapi import FastAPI, HTTPException, Body, UploadFile, File, Request, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Body
 from pathlib import Path
@@ -9,6 +16,13 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 from fastapi.responses import JSONResponse, PlainTextResponse
 import logging
+from fastapi.encoders import jsonable_encoder
+from tools.scaffold_team import (
+    generate_env_file,
+    generate_env_template,
+    generate_checklist,
+    copy_cline_templates_and_rules,
+)
 
 app = FastAPI()
 
@@ -20,7 +34,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+TEAM_TEMPLATES_DIR = PROJECT_ROOT / "team_templates"
+TEAM_TEMPLATES_DIR.mkdir(exist_ok=True)
 
 
 @app.get("/health")
@@ -445,3 +460,179 @@ def delete_role_template(role: str):
         raise HTTPException(status_code=404, detail="Role not found")
     shutil.rmtree(role_dir)
     return {"status": "deleted", "role": role}
+
+
+@app.get("/api/team-templates")
+def list_team_templates():
+    templates = []
+    for file in TEAM_TEMPLATES_DIR.glob("*.json"):
+        with open(file) as f:
+            try:
+                data = json.load(f)
+                templates.append({"name": file.stem, **data})
+            except Exception:
+                continue
+    return JSONResponse(content=templates)
+
+
+@app.get("/api/team-template/{template_name}")
+def get_team_template(template_name: str):
+    path = TEAM_TEMPLATES_DIR / f"{template_name}.json"
+    if not path.exists():
+        return JSONResponse(content="", status_code=404)
+    with open(path) as f:
+        data = json.load(f)
+    return JSONResponse(content=data)
+
+
+@app.post("/api/team-template")
+def create_team_template(template=Body(...)):
+    name = template.get("name")
+    if not name:
+        return JSONResponse(content={"error": "Missing template name"}, status_code=400)
+    path = TEAM_TEMPLATES_DIR / f"{name}.json"
+    if path.exists():
+        return JSONResponse(
+            content={"error": "Template already exists"}, status_code=400
+        )
+    with open(path, "w") as f:
+        json.dump(template, f, indent=2)
+    return {"status": "created", "template": template}
+
+
+@app.put("/api/team-template/{template_name}")
+def update_team_template(template_name: str, template=Body(...)):
+    path = TEAM_TEMPLATES_DIR / f"{template_name}.json"
+    if not path.exists():
+        return JSONResponse(content={"error": "Template not found"}, status_code=404)
+    with open(path, "w") as f:
+        json.dump(template, f, indent=2)
+    return {"status": "updated", "template": template}
+
+
+@app.delete("/api/team-template/{template_name}")
+def delete_team_template(template_name: str):
+    path = TEAM_TEMPLATES_DIR / f"{template_name}.json"
+    if not path.exists():
+        return JSONResponse(content={"error": "Template not found"}, status_code=404)
+    path.unlink()
+    return {"status": "deleted", "template": template_name}
+
+
+@app.post("/api/instantiate-team")
+def instantiate_team(request: Request):
+    import asyncio
+    import logging
+
+    try:
+        data = request.json() if hasattr(request, "json") else None
+        if asyncio.iscoroutine(data):
+            data = asyncio.run(data)
+        if not data:
+            data = request._json
+        print(f"[DEBUG] Incoming instantiate-team data: {data}")
+        name = data.get("name")
+        description = data.get("description", "")
+        comm_type = data.get("commType", "internal")
+        template_name = data.get("template")
+        print(f"[DEBUG] name={name}, template_name={template_name}")
+        if not name or not template_name:
+            print("[DEBUG] Missing team name or template in request")
+            return JSONResponse(
+                content={"error": "Missing team name or template"}, status_code=400
+            )
+        # Load template
+        template_path = TEAM_TEMPLATES_DIR / f"{template_name}.json"
+        print(f"[DEBUG] Resolved template_path: {template_path}")
+        if not template_path.exists():
+            print(f"[DEBUG] Template not found at {template_path}")
+            return JSONResponse(
+                content={"error": "Template not found"}, status_code=404
+            )
+        with open(template_path) as f:
+            template = json.load(f)
+        print(f"[DEBUG] Loaded template: {template}")
+        # Create team dir
+        team_dir = PROJECT_ROOT / "teams" / name
+        if team_dir.exists():
+            print(f"[DEBUG] Team dir already exists: {team_dir}")
+            return JSONResponse(
+                content={"error": "Team already exists"}, status_code=400
+            )
+        team_dir.mkdir(parents=True, exist_ok=True)
+        # Write config
+        config = {
+            "name": name,
+            "description": description,
+            "commType": comm_type,
+            "roles": template.get("roles", []),
+            "teamDocs": template.get("teamDocs", ""),
+            "template": template_name,
+        }
+        with open(team_dir / "config.json", "w") as f:
+            json.dump(config, f, indent=2)
+
+        # --- NEW: Run full scaffold logic ---
+        try:
+            roles = config["roles"]
+            prefix = data.get("prefix", "user")
+            domain = data.get("domain", "example.com")
+            print(
+                f"[DEBUG] Scaffolding with roles={roles}, prefix={prefix}, domain={domain}"
+            )
+            generate_env_file(name, prefix, domain, roles, dry_run=False)
+            generate_env_template(name, roles, dry_run=False)
+            generate_checklist(name, roles, dry_run=False)
+            copy_cline_templates_and_rules(name, roles, dry_run=False)
+        except Exception as e:
+            import traceback
+
+            traceback.print_exc()
+            print(f"[DEBUG] Scaffold failed: {e}")
+            return JSONResponse(
+                content={"error": f"Scaffold failed: {e}"}, status_code=500
+            )
+        # --- END SCAFFOLD ---
+
+        return {"status": "created", "team": config}
+    except Exception as e:
+        import traceback
+
+        traceback.print_exc()
+        print(f"[DEBUG] Unexpected error in instantiate_team: {e}")
+        return JSONResponse(
+            content={"error": f"Unexpected error: {e}"}, status_code=500
+        )
+
+
+@app.get("/api/team/{team_id}")
+def get_team(team_id: str):
+    team_dir = PROJECT_ROOT / "teams" / team_id
+    config_path = team_dir / "config.json"
+    if not config_path.exists():
+        return JSONResponse(content={"error": "Team not found"}, status_code=404)
+    with open(config_path) as f:
+        config = json.load(f)
+    return config
+
+
+@app.put("/api/team/{team_id}")
+def update_team(team_id: str, data=Body(...)):
+    team_dir = PROJECT_ROOT / "teams" / team_id
+    config_path = team_dir / "config.json"
+    if not config_path.exists():
+        return JSONResponse(content={"error": "Team not found"}, status_code=404)
+    with open(config_path, "w") as f:
+        json.dump(data, f, indent=2)
+    return {"status": "updated", "team": data}
+
+
+@app.delete("/api/team/{team_id}")
+def delete_team(team_id: str):
+    import shutil
+
+    team_dir = PROJECT_ROOT / "teams" / team_id
+    if not team_dir.exists():
+        return JSONResponse(content={"error": "Team not found"}, status_code=404)
+    shutil.rmtree(team_dir)
+    return {"status": "deleted", "team": team_id}
