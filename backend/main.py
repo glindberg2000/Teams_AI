@@ -23,6 +23,7 @@ from tools.scaffold_team import (
     generate_checklist,
     copy_cline_templates_and_rules,
 )
+from routes.team_files import router as team_files_router
 
 app = FastAPI()
 
@@ -36,6 +37,8 @@ app.add_middleware(
 
 TEAM_TEMPLATES_DIR = PROJECT_ROOT / "team_templates"
 TEAM_TEMPLATES_DIR.mkdir(exist_ok=True)
+
+app.include_router(team_files_router)
 
 
 @app.get("/health")

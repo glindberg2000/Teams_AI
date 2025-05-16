@@ -223,7 +223,6 @@ function RoleDetails({ role, onRoleUpdated, onRoleDeleted }) {
             <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography>Role Overview</Typography>
-                    <IconButton size="small" sx={{ ml: 1 }} onClick={e => { e.stopPropagation(); handleEdit('overview', overview); }}><EditIcon fontSize="small" /></IconButton>
                 </AccordionSummary>
                 <AccordionDetails>
                     {overview && overview.trim().startsWith('#') ? (
@@ -233,24 +232,31 @@ function RoleDetails({ role, onRoleUpdated, onRoleDeleted }) {
                             <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{overview || 'No overview available.'}</pre>
                         </Box>
                     )}
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                        <IconButton size="small" onClick={() => handleEdit('overview', overview)}><EditIcon fontSize="small" /></IconButton>
+                    </Box>
                 </AccordionDetails>
             </Accordion>
             <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography>Environment Sample</Typography>
-                    <IconButton size="small" sx={{ ml: 1 }} onClick={e => { e.stopPropagation(); handleEdit('env', envSample); }}><EditIcon fontSize="small" /></IconButton>
                 </AccordionSummary>
                 <AccordionDetails>
                     <PrettyEnvBlock content={envSample} />
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                        <IconButton size="small" onClick={() => handleEdit('env', envSample)}><EditIcon fontSize="small" /></IconButton>
+                    </Box>
                 </AccordionDetails>
             </Accordion>
             <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography>MCP Config Template</Typography>
-                    <IconButton size="small" sx={{ ml: 1 }} onClick={e => { e.stopPropagation(); handleEdit('mcp', mcpConfig); }}><EditIcon fontSize="small" /></IconButton>
                 </AccordionSummary>
                 <AccordionDetails>
                     <PrettyCodeBlock content={mcpConfig || 'No mcp_config.template.json available.'} />
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                        <IconButton size="small" onClick={() => handleEdit('mcp', mcpConfig)}><EditIcon fontSize="small" /></IconButton>
+                    </Box>
                 </AccordionDetails>
             </Accordion>
             <Button startIcon={<DeleteIcon />} color="error" sx={{ mt: 2 }} onClick={() => setConfirmDelete(true)}>Delete Role</Button>

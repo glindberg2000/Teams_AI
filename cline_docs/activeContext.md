@@ -4,6 +4,11 @@
 - Restored `.devcontainer` and Dockerfile generation for all session containers via `team_cli.py`.
 - Verified that session creation now produces correct container configs and scripts for each agent.
 - Preparing to streamline the setup of `mcp-discord` inside session containers, so Discord MCP server can be run without manual path edits.
+- Roles UI: All editors (overview, env, MCP config) now use large, multi-line modals for editing.
+- MCP config is pretty-printed for editing, minified for saving.
+- Env and overview preserve formatting for editing.
+- Backend overview endpoint returns plain text for Markdown rendering.
+- UI/UX for roles is now much more comfortable and user-friendly.
 
 ## Recent Changes
 - `.devcontainer` and all scripts restored from template to project root and committed.
@@ -23,6 +28,8 @@
 - Document the streamlined workflow for Discord MCP server setup in session containers.
 - Reconfigure any broken MCP servers in existing sessions to use the new config pattern.
 - Rebuild containers for all teams/sessions to ensure the new Dockerfile and MCP config are in effect.
+- Finalize the Team section design: either add Team Templates or streamline the team scaffolding/generation process in the Teams UI.
+- Implement the chosen approach for Teams.
 
 ## Current State
 - Discord MCP integration is fully operational using the [mcp-discord](https://github.com/netixc/mcp-discord) bridge.

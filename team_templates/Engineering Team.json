@@ -1,0 +1,13 @@
+{
+  "name": "Engineering Team",
+  "displayName": "Engineering Crew",
+  "description": "Full stack python team with backend DB and Devops",
+  "roles": [
+    "pm_guardian",
+    "reviewer",
+    "db_guardian",
+    "full_stack_dev",
+    "python_coder"
+  ],
+  "teamDocs": "My team docs go here"
+}
