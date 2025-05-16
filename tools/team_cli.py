@@ -93,9 +93,15 @@ def list_roles():
 
 def setup_devcontainer(session_path: Path, project: str, name: str):
     """Set up devcontainer configuration for a session."""
+    import re
+
     if not DEVCONTAINER_DIR.exists():
         print("[WARNING] No .devcontainer directory found in project root.")
         return
+
+    def sanitize_container_name(s):
+        # Only allow [a-zA-Z0-9_.-], replace others with '-'
+        return re.sub(r"[^a-zA-Z0-9_.-]", "-", s)
 
     # Copy devcontainer files
     session_devcontainer = session_path / ".devcontainer"
@@ -107,14 +113,16 @@ def setup_devcontainer(session_path: Path, project: str, name: str):
         with open(devcontainer_json, "r") as f:
             config = json.load(f)
 
-        # Update container name
-        config["name"] = f"{project}-{name}"
+        # Sanitize project and name for Docker
+        safe_project = sanitize_container_name(project)
+        safe_name = sanitize_container_name(name)
+        config["name"] = f"{safe_project}-{safe_name}"
 
         # Update runArgs to use unique container name
         if "runArgs" in config:
             for i, arg in enumerate(config["runArgs"]):
                 if arg == "--name":
-                    config["runArgs"][i + 1] = f"windsurf-{project}-{name}"
+                    config["runArgs"][i + 1] = f"windsurf-{safe_project}-{safe_name}"
                     break
 
         # Fix mount path to use payload directory
