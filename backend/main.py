@@ -5,7 +5,17 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-from fastapi import FastAPI, HTTPException, Body, UploadFile, File, Request, Path
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Body,
+    UploadFile,
+    File,
+    Request,
+    Path,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Body
 from pathlib import Path
@@ -13,7 +23,7 @@ import subprocess
 import os
 import json
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from fastapi.responses import JSONResponse, PlainTextResponse
 import logging
 from fastapi.encoders import jsonable_encoder
@@ -639,3 +649,40 @@ def delete_team(team_id: str):
         return JSONResponse(content={"error": "Team not found"}, status_code=404)
     shutil.rmtree(team_dir)
     return {"status": "deleted", "team": team_id}
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, team_id: str, websocket: WebSocket):
+        await websocket.accept()
+        if team_id not in self.active_connections:
+            self.active_connections[team_id] = []
+        self.active_connections[team_id].append(websocket)
+
+    def disconnect(self, team_id: str, websocket: WebSocket):
+        if team_id in self.active_connections:
+            self.active_connections[team_id].remove(websocket)
+            if not self.active_connections[team_id]:
+                del self.active_connections[team_id]
+
+    async def broadcast(self, team_id: str, message: dict):
+        if team_id in self.active_connections:
+            for connection in self.active_connections[team_id]:
+                await connection.send_json(message)
+
+
+manager = ConnectionManager()
+
+
+@app.websocket("/ws/{team_id}")
+async def websocket_endpoint(websocket: WebSocket, team_id: str):
+    await manager.connect(team_id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # Expecting {"user": ..., "message": ...}
+            await manager.broadcast(team_id, data)
+    except WebSocketDisconnect:
+        manager.disconnect(team_id, websocket)
