@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import os
 
 # Ensure the project root is in sys.path so 'tools' can be imported
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
@@ -20,7 +21,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Body
 from pathlib import Path
 import subprocess
-import os
 import json
 from pydantic import BaseModel
 from typing import Optional, Dict, List
@@ -49,6 +49,8 @@ TEAM_TEMPLATES_DIR = PROJECT_ROOT / "team_templates"
 TEAM_TEMPLATES_DIR.mkdir(exist_ok=True)
 
 app.include_router(team_files_router)
+
+CHAT_PORT = int(os.environ.get("TEAM_CHAT_PORT", 8787))
 
 
 @app.get("/health")
