@@ -1,0 +1,99 @@
+/* Sidebar styles */
+.sidebar {
+  height: 100vh;
+  width: 220px;
+  background: linear-gradient(to bottom, #4FC3F7, #1565C0);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 8px rgba(21, 101, 192, 0.08);
+  border-right: 1px solid #bbdefb;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10;
+}
+
+.main-content {
+  margin-left: 220px;
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #f8fafc, #ede7f6);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 2rem 3rem;
+  width: calc(100vw - 220px);
+}
+
+/* Remove old centering styles */
+#root {
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* Optional: Style nav links for clarity */
+.sidebar nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: white;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sidebar nav a.active,
+.sidebar nav a[aria-current="page"] {
+  background: white;
+  color: #1565C0;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(21, 101, 192, 0.08);
+}
+
+.sidebar nav a:hover {
+  background: #bbdefb;
+  color: #1565C0;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
