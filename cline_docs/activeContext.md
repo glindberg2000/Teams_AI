@@ -174,4 +174,62 @@ The following MCP config was used and did not need to be changed:
 - Check for errors in the MCP server terminal.
 
 ---
-**Always use the Smithery CLI wrapper and correct key for Cursor integration.** 
+**Always use the Smithery CLI wrapper and correct key for Cursor integration.**
+
+# Internal Chat MCP Server Draft Plan
+
+## Purpose
+Expose the internal team chat server as an MCP tool for Cursor and agent integration, while preserving CLI and web UI compatibility.
+
+## Key Features
+- MCP manifest endpoint for tool discovery
+- Tools: send_message, get_unread_messages (with filtering)
+- Filtering: by user, channel, DM, or tag (for agent-directed messages)
+- No breaking changes to CLI or web UI
+
+## Manifest Example
+```json
+{
+  "tools": [
+    {
+      "name": "send_message",
+      "description": "Send a message to the team chat.",
+      "parameters": {
+        "team_id": "string",
+        "user": "string",
+        "message": "string"
+      }
+    },
+    {
+      "name": "get_unread_messages",
+      "description": "Get unread messages for a team with filters (user, channel, DM, etc).",
+      "parameters": {
+        "team_id": "string",
+        "since_message_id": "string",
+        "limit": "integer",
+        "sender_id": "string (optional)",
+        "channel": "string (optional)",
+        "dm_only": "boolean (optional)",
+        "mention_only": "boolean (optional)",
+        "content_regex": "string (optional)"
+      }
+    }
+  ]
+}
+```
+
+## Endpoints
+- `GET /mcp/manifest`
+- `POST /mcp/send_message` (team_id, user, message)
+- `GET /mcp/get_unread_messages` (team_id, since_message_id, limit, sender_id, channel, dm_only, mention_only, content_regex)
+
+## Filtering/Agent Use Cases
+- Agent can fetch only DMs, only messages mentioning itself, or only from certain users/channels.
+- PM can send directives to the agent via chat; agent can reply or update PM as needed.
+- Agents can communicate with each other or receive feature updates/feedback.
+
+## Integration Notes
+- Use FastAPI for the MCP wrapper, reusing existing ChatClient logic.
+- MCP server runs as a separate process; CLI and web UI remain unchanged.
+- Update `.cursor/mcp.json` to point to the new MCP server.
+- Track this feature in Task Master for progress and documentation. 

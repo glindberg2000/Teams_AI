@@ -13,6 +13,16 @@ import ButtonGroup from '@mui/material/ButtonGroup';
 import Chip from '@mui/material/Chip';
 import Autocomplete from '@mui/material/Autocomplete';
 
+// Add a Team type for clarity
+interface Team {
+    name: string;
+    description: string;
+    commType?: string;
+    template?: string;
+    roles?: string[];
+    [key: string]: any;
+}
+
 function OverviewTab({ team, onEdit, onDelete, onRolesChange }: { team: any, onEdit: () => void, onDelete: () => void, onRolesChange: (roles: string[]) => void }) {
     const [allRoles, setAllRoles] = useState<string[]>([]);
     const [addRole, setAddRole] = useState('');
@@ -412,8 +422,8 @@ function ChatTab({ teamId }: { teamId: string }) {
     const [input, setInput] = useState("");
     const ws = useRef<WebSocket | null>(null);
     const [connected, setConnected] = useState(false);
-    // Use NEXT_PUBLIC_TEAM_CHAT_PORT or default to 8787
-    const port = process.env.NEXT_PUBLIC_TEAM_CHAT_PORT || 8787;
+    // Always use backend port 8000 for chat WebSocket
+    const port = 8000;
     useEffect(() => {
         if (typeof window === "undefined") return;
         ws.current = new WebSocket(`ws://localhost:${port}/ws/${teamId}`);
@@ -464,8 +474,9 @@ const tabLabels = [
 export default function TeamDetailsPage() {
     const router = useRouter();
     const params = useParams();
-    const teamId = params.teamId;
-    const [team, setTeam] = useState(null);
+    // Ensure teamId is always a string
+    const teamId = typeof params.teamId === 'string' ? params.teamId : Array.isArray(params.teamId) ? params.teamId[0] : '';
+    const [team, setTeam] = useState<Team | null>(null);
     const [loading, setLoading] = useState(true);
     const [editOpen, setEditOpen] = useState(false);
     const [editForm, setEditForm] = useState({ name: '', description: '', commType: 'internal' });
@@ -479,7 +490,14 @@ export default function TeamDetailsPage() {
             .then(data => { setTeam(data); setLoading(false); });
     }, [teamId]);
 
+    // Use TEAM_ID from backend if available, else normalize team.name
+    function normalizeTeamId(name: string) {
+        return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+    }
+    const teamChatId = team?.TEAM_ID || (team?.name ? normalizeTeamId(team.name) : '');
+
     const handleEdit = () => {
+        if (!team) return;
         setEditForm({
             name: team.name,
             description: team.description,
@@ -489,6 +507,7 @@ export default function TeamDetailsPage() {
     };
 
     const handleSave = async () => {
+        if (!team) return;
         try {
             const res = await fetch(`/api/team/${teamId}`, {
                 method: 'PUT',
@@ -517,7 +536,7 @@ export default function TeamDetailsPage() {
     };
 
     if (loading) return <Box sx={{ p: 4 }}><Typography>Loading...</Typography></Box>;
-    if (!team || team.error) return <Box sx={{ p: 4 }}><Typography color="error">Team not found.</Typography></Box>;
+    if (!team || (team as any).error) return <Box sx={{ p: 4 }}><Typography color="error">Team not found.</Typography></Box>;
 
     return (
         <Box>
@@ -531,13 +550,13 @@ export default function TeamDetailsPage() {
                 <Tab label="Checklist" />
                 <Tab label="Environment" />
             </Tabs>
-            {tab === 0 && <OverviewTab team={team} onEdit={handleEdit} onDelete={() => setDeleteOpen(true)} onRolesChange={(roles) => setTeam({ ...team, roles })} />}
-            {tab === 1 && <ChatTab teamId={teamId} />}
-            {tab === 2 && <SessionsTab teamId={teamId} />}
-            {tab === 3 && <TasksTab teamId={teamId} />}
-            {tab === 4 && <SharedDocsTab teamId={teamId} />}
-            {tab === 5 && <ChecklistTab teamId={teamId} />}
-            {tab === 6 && <EnvironmentTab teamId={teamId} />}
+            {tab === 0 && team && <OverviewTab team={team} onEdit={handleEdit} onDelete={() => setDeleteOpen(true)} onRolesChange={(roles) => setTeam({ ...team, roles })} />}
+            {tab === 1 && teamChatId && <ChatTab teamId={teamChatId} />}
+            {tab === 2 && teamId && <SessionsTab teamId={teamId} />}
+            {tab === 3 && teamId && <Typography sx={{ p: 2 }}>Tasks coming soon.</Typography>}
+            {tab === 4 && teamId && <SharedDocsTab teamId={teamId} />}
+            {tab === 5 && teamId && <ChecklistTab teamId={teamId} />}
+            {tab === 6 && teamId && <EnvironmentTab teamId={teamId} />}
             <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Edit Team</DialogTitle>
                 <DialogContent>

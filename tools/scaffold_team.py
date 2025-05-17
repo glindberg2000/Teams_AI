@@ -45,6 +45,7 @@ import yaml
 import datetime
 import json
 import shutil
+import re
 
 # Constants
 DEFAULT_ROLES = ["pm_guardian", "python_coder", "reviewer"]
@@ -148,6 +149,11 @@ def validate_roles(roles):
     return True
 
 
+def normalize_team_id(name):
+    # Lowercase, replace spaces with dashes, remove non-alphanum except dash/underscore
+    return re.sub(r"[^a-z0-9_-]", "", name.lower().replace(" ", "-"))
+
+
 def generate_env_file(project, prefix, domain, roles, dry_run=False):
     """
     Generate the environment file (teams/{project}/config/env) with all required configuration.
@@ -171,6 +177,7 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         "",
         "# Team Configuration",
         f"TEAM_NAME={project}",
+        f"TEAM_ID={normalize_team_id(project)}",
         f"TEAM_DESCRIPTION={project} team",
         f"PROJECT_NAME={project}",
         f"EMAIL_PREFIX={prefix}",
@@ -279,6 +286,7 @@ def generate_env_template(project, roles, dry_run=False):
     content = [
         "# Team Configuration",
         "TEAM_NAME=${TEAM_NAME}",
+        "TEAM_ID=${TEAM_ID}",
         "TEAM_DESCRIPTION=${TEAM_DESCRIPTION}",
         "",
         "# Project and Integration Repos",
@@ -671,6 +679,10 @@ def main():
             slackbot_manifest = generate_slackbot_manifest(display_name)
             with open(config_dir / f"slackbot_manifest_{role}.json", "w") as f:
                 json.dump(slackbot_manifest, f, indent=2)
+
+        # After generating files
+        team_id = normalize_team_id(project)
+        print(f"\n[INFO] Normalized TEAM_ID for this team: {team_id}")
 
     except Exception as e:
         print(f"Error creating files: {e}")

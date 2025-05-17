@@ -19,4 +19,10 @@
 
 ## Status
 - All legacy, migration, and reorg notes have been moved to cline_docs/legacy/.
-- Only current, actionable progress is kept here. 
+- Only current, actionable progress is kept here.
+
+- [ ] Plan for internal chat MCP server documented in activeContext.md
+- [ ] MCP server will expose send_message and get_unread_messages with advanced filtering (user, channel, DM, etc)
+- [ ] CLI and web UI will remain unchanged
+- [ ] Task Master will be updated with this new feature for tracking
+- [ ] Next: commit current state, then implement MCP server and update Task Master 
