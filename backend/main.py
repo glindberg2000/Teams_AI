@@ -34,6 +34,7 @@ from tools.scaffold_team import (
     copy_cline_templates_and_rules,
 )
 from routes.team_files import router as team_files_router
+from routes.admin_sessions import router as admin_sessions_router
 
 app = FastAPI()
 
@@ -49,6 +50,7 @@ TEAM_TEMPLATES_DIR = PROJECT_ROOT / "team_templates"
 TEAM_TEMPLATES_DIR.mkdir(exist_ok=True)
 
 app.include_router(team_files_router)
+app.include_router(admin_sessions_router)
 
 CHAT_PORT = int(os.environ.get("TEAM_CHAT_PORT", 8787))
 
