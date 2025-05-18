@@ -42,6 +42,21 @@
                 "DEFAULT_SERVER_ID": "${DISCORD_GUILD_ID}"
             }
         },
+        "internal-chat": {
+            "command": "/workspaces/project/.venv/bin/internal-chat-mcp",
+            "args": [
+                "--mode",
+                "sse",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8000"
+            ],
+            "env": {
+                "INTERNAL_CHAT_TEAM_ID": "${INTERNAL_CHAT_TEAM_ID}",
+                "INTERNAL_CHAT_USER": "${INTERNAL_CHAT_USER}"
+            }
+        },
         "context7": {
             "command": "npx",
             "args": [
