@@ -256,7 +256,13 @@ function RoleDetails({ role, onRoleUpdated, onRoleDeleted }) {
                     <Typography>MCP Config Template</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                    <PrettyCodeBlock content={mcpConfig || 'No mcp_config.template.json available.'} />
+                    <ThemedMarkdown>{(() => {
+                        try {
+                            return JSON.stringify(JSON.parse(mcpConfig), null, 2);
+                        } catch {
+                            return mcpConfig || 'No mcp_config.template.json available.';
+                        }
+                    })()}</ThemedMarkdown>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
                         <IconButton size="small" onClick={() => handleEdit('mcp', mcpConfig)}><EditIcon fontSize="small" /></IconButton>
                     </Box>
