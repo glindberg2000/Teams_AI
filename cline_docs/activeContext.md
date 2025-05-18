@@ -232,4 +232,10 @@ Expose the internal team chat server as an MCP tool for Cursor and agent integra
 - Use FastAPI for the MCP wrapper, reusing existing ChatClient logic.
 - MCP server runs as a separate process; CLI and web UI remain unchanged.
 - Update `.cursor/mcp.json` to point to the new MCP server.
-- Track this feature in Task Master for progress and documentation. 
+- Track this feature in Task Master for progress and documentation.
+
+## [2025-05-17] MCP Tool Setup Fully Documented
+- Created cline_docs/mcp_tool_setup.md with a comprehensive guide for MCP tool setup, extension, and maintenance.
+- internal_chat_mcp is now correctly configured with a CLI entrypoint and is running (green dot).
+- All test tools are available and functional via MCP.
+- Next step: add real business logic tools as needed, following the new documentation. 
