@@ -139,4 +139,12 @@ This guide documents the process for setting up, extending, and maintaining cust
 
 ## Reference
 - See [docs/projects/ledgerflow/mcp_tools.md](../docs/projects/ledgerflow/mcp_tools.md) for high-level tool descriptions.
-- Document new tools and changes in this file for team visibility. 
+- Document new tools and changes in this file for team visibility.
+
+---
+
+## [2025-05-18] Internal Chat MCP Tools: Reference Implementation
+- Successfully integrated and tested the internal_chat_mcp tools (SendMessage, GetUnreadMessages, WaitForMessage) with the backend chat system.
+- Real-world workflow: agent announces availability, waits for a task, receives a task, and responds—all via MCP tools.
+- Key lessons: Ensure function signatures are valid Python, test tools in isolation before MCP registration, and verify end-to-end with real backend.
+- This is now the reference implementation for future chat tool integrations (see cline_docs/activeContext.md for latest status). 

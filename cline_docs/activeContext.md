@@ -238,4 +238,10 @@ Expose the internal team chat server as an MCP tool for Cursor and agent integra
 - Created cline_docs/mcp_tool_setup.md with a comprehensive guide for MCP tool setup, extension, and maintenance.
 - internal_chat_mcp is now correctly configured with a CLI entrypoint and is running (green dot).
 - All test tools are available and functional via MCP.
-- Next step: add real business logic tools as needed, following the new documentation. 
+- Next step: add real business logic tools as needed, following the new documentation.
+
+## [2025-05-18] Internal Chat MCP Tools Fully Integrated
+- The internal_chat_mcp MCP tools (SendMessage, GetUnreadMessages, WaitForMessage) are now fully implemented and tested.
+- Successfully sent, received, and waited for messages in a real workflow with the backend chat system (team-9).
+- End-to-end agent workflow is confirmed working: announce availability, wait for task, receive, and respond.
+- Next: further automate or extend the workflow as needed. 
