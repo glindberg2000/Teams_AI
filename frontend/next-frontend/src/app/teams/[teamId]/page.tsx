@@ -13,6 +13,14 @@ import ButtonGroup from '@mui/material/ButtonGroup';
 import Chip from '@mui/material/Chip';
 import Autocomplete from '@mui/material/Autocomplete';
 import ThemedMarkdown from '../../components/ThemedMarkdown';
+import TreeView from '@mui/lab/TreeView';
+import TreeItem from '@mui/lab/TreeItem';
+import Badge from '@mui/material/Badge';
+import CircularProgress from '@mui/material/CircularProgress';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemText from '@mui/material/ListItemText';
 
 // Add a Team type for clarity
 interface Team {
@@ -134,9 +142,7 @@ function EnvironmentTab({ teamId }: { teamId: string }) {
         {editing ? (
             <TextField multiline minRows={12} value={editEnv} onChange={e => setEditEnv(e.target.value)} fullWidth sx={{ mb: 2, fontFamily: 'monospace' }} />
         ) : (
-            <Box sx={{ whiteSpace: 'pre-line', bgcolor: '#f5f5f5', p: 2, borderRadius: 1, mb: 2, fontFamily: 'monospace', fontSize: 15 }}>
-                {env.split('\n').map((line, i) => maskLine(line)).join('\n')}
-            </Box>
+            <ThemedMarkdown>{env.split('\n').map((line, i) => maskLine(line)).join('\n')}</ThemedMarkdown>
         )}
         {/* TODO: Table-based editing for env, advanced secret masking UI */}
     </Box>;
@@ -325,6 +331,17 @@ function SessionsTab({ teamId }: { teamId: string }) {
     const [selectedSession, setSelectedSession] = useState<string | null>(null);
     const [genLog, setGenLog] = useState<any>(null);
     const [logOpen, setLogOpen] = useState(false);
+    // Admin modal state
+    const [adminOpen, setAdminOpen] = useState(false);
+    const [adminTab, setAdminTab] = useState(0);
+    const [adminData, setAdminData] = useState<any>({});
+    const [adminLoading, setAdminLoading] = useState(false);
+    const [adminError, setAdminError] = useState('');
+    const [payloadFile, setPayloadFile] = useState<string | null>(null);
+    const [payloadContent, setPayloadContent] = useState<string>('');
+    const [payloadLoading, setPayloadLoading] = useState(false);
+    const [payloadError, setPayloadError] = useState('');
+
     const fetchSessions = async () => {
         setLoading(true);
         const res = await fetch(`/api/team/${teamId}/sessions`);
@@ -357,6 +374,50 @@ function SessionsTab({ teamId }: { teamId: string }) {
         setLogOpen(true);
         setLoading(false);
     };
+    // Admin modal logic
+    const openAdminModal = async (sessionId: string) => {
+        setAdminOpen(true);
+        setAdminTab(0);
+        setAdminLoading(true);
+        setAdminError('');
+        setPayloadFile(null);
+        setPayloadContent('');
+        setPayloadError('');
+        try {
+            const [meta, fs, config, health] = await Promise.all([
+                fetch(`/api/admin/sessions/${teamId}/${sessionId}`).then(r => r.json()),
+                fetch(`/api/admin/sessions/${teamId}/${sessionId}/filesystem`).then(r => r.json()),
+                fetch(`/api/admin/sessions/${teamId}/${sessionId}/config`).then(r => r.json()),
+                fetch(`/api/admin/sessions/${teamId}/${sessionId}/health`).then(r => r.json()),
+            ]);
+            setAdminData({ meta, fs, config, health, sessionId });
+        } catch (e: any) {
+            setAdminError('Failed to load session data');
+        }
+        setAdminLoading(false);
+    };
+    const handleFileClick = async (file: any) => {
+        setPayloadFile(file.name);
+        setPayloadContent('');
+        setPayloadError('');
+        setPayloadLoading(true);
+        try {
+            const res = await fetch(`/api/admin/sessions/${teamId}/${adminData.sessionId}/file?path=${encodeURIComponent(file.name)}`);
+            if (!res.ok) throw new Error('Failed to fetch file');
+            const data = await res.json();
+            setPayloadContent(data.content);
+        } catch (e: any) {
+            setPayloadError('Failed to load file content');
+        }
+        setPayloadLoading(false);
+    };
+    const renderTree = (node: any) => (
+        <TreeItem key={node.name} nodeId={node.name + Math.random()} label={node.name}>
+            {Array.isArray(node.children)
+                ? node.children.map((child: any) => renderTree(child))
+                : null}
+        </TreeItem>
+    );
     if (loading) return <Box p={2}><Typography>Loading...</Typography></Box>;
     return <Box p={2}>
         <Box sx={{ mb: 2 }}>
@@ -375,9 +436,88 @@ function SessionsTab({ teamId }: { teamId: string }) {
                 <Card key={s} sx={{ minWidth: 220, maxWidth: 300, p: 2, mb: 2 }}>
                     <Typography variant="subtitle1" sx={{ mb: 1 }}>{s}</Typography>
                     <Button variant="outlined" size="small" onClick={() => setSelectedSession(s)}>Open Session</Button>
+                    <Button variant="contained" size="small" sx={{ ml: 1 }} onClick={() => openAdminModal(s)}>Details</Button>
                 </Card>
             ))}
         </Box>
+        {/* Admin Birdseye Modal */}
+        <Dialog open={adminOpen} onClose={() => setAdminOpen(false)} maxWidth="md" fullWidth>
+            <DialogTitle>Session Birdseye: {adminData.sessionId}</DialogTitle>
+            <DialogContent dividers>
+                {adminLoading ? <CircularProgress /> : adminError ? <Typography color="error">{adminError}</Typography> : (
+                    <>
+                        <Tabs value={adminTab} onChange={(_, v) => setAdminTab(v)} sx={{ mb: 2 }}>
+                            <Tab label="Payload" />
+                            <Tab label="Filesystem" />
+                            <Tab label="Config" />
+                            <Tab label="Health" />
+                        </Tabs>
+                        {adminTab === 0 && (
+                            <Box>
+                                <Typography variant="subtitle2">Files in payload/</Typography>
+                                <List dense sx={{ maxHeight: 200, overflow: 'auto', bgcolor: '#f5f5f5', mb: 2 }}>
+                                    {adminData.meta?.files?.map((file: any) => (
+                                        <ListItem key={file.name} disablePadding>
+                                            <ListItemButton selected={payloadFile === file.name} onClick={() => handleFileClick(file)}>
+                                                <ListItemText primary={file.name} secondary={file.type === 'file' ? `${file.size} bytes` : 'directory'} />
+                                            </ListItemButton>
+                                        </ListItem>
+                                    ))}
+                                </List>
+                                {payloadFile && (
+                                    <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5', fontFamily: 'monospace', fontSize: 14 }}>
+                                        <Typography variant="subtitle2">{payloadFile}</Typography>
+                                        {payloadLoading ? <CircularProgress size={20} /> : payloadError ? <Typography color="error">{payloadError}</Typography> : (
+                                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{payloadContent}</pre>
+                                        )}
+                                    </Paper>
+                                )}
+                                <Typography variant="subtitle2">Parsed mcp_config.json</Typography>
+                                <Paper sx={{ p: 2, bgcolor: '#f5f5f5', fontFamily: 'monospace', fontSize: 14, mb: 2 }}>
+                                    <pre style={{ margin: 0 }}>{JSON.stringify(adminData.meta?.mcp_config, null, 2)}</pre>
+                                </Paper>
+                            </Box>
+                        )}
+                        {adminTab === 1 && (
+                            <Box>
+                                <Typography variant="subtitle2">Filesystem Tree</Typography>
+                                {adminData.fs ? (
+                                    <TreeView defaultCollapseIcon="▼" defaultExpandIcon=">">
+                                        {renderTree(adminData.fs)}
+                                    </TreeView>
+                                ) : <Typography>No filesystem data</Typography>}
+                            </Box>
+                        )}
+                        {adminTab === 2 && (
+                            <Box>
+                                <Typography variant="subtitle2">mcp_config.json</Typography>
+                                <Paper sx={{ p: 2, bgcolor: '#f5f5f5', fontFamily: 'monospace', fontSize: 14, mb: 2 }}>
+                                    <pre style={{ margin: 0 }}>{JSON.stringify(adminData.config, null, 2)}</pre>
+                                </Paper>
+                            </Box>
+                        )}
+                        {adminTab === 3 && (
+                            <Box>
+                                <Typography variant="subtitle2">Health / Status</Typography>
+                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+                                    {adminData.health && Object.entries(adminData.health).map(([k, v]) => (
+                                        <Badge key={k} color={v ? 'success' : 'error'} badgeContent={v ? 'OK' : 'Missing'} sx={{ mr: 2 }}>
+                                            <Typography>{k}</Typography>
+                                        </Badge>
+                                    ))}
+                                </Box>
+                                <Paper sx={{ p: 2, bgcolor: '#f5f5f5', fontFamily: 'monospace', fontSize: 14 }}>
+                                    <pre style={{ margin: 0 }}>{JSON.stringify(adminData.health, null, 2)}</pre>
+                                </Paper>
+                            </Box>
+                        )}
+                    </>
+                )}
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setAdminOpen(false)}>Close</Button>
+            </DialogActions>
+        </Dialog>
         {/* Log Modal */}
         <Dialog open={logOpen} onClose={() => setLogOpen(false)} maxWidth="md" fullWidth>
             <DialogTitle>Session Generation Log</DialogTitle>

@@ -28,19 +28,55 @@ def list_all_sessions():
     return sessions
 
 
-# 2. Get session metadata/payload
+# 2. Get session metadata/payload (now returns file list, mcp_config, and metadata)
 @router.get("/api/admin/sessions/{team}/{session_id}")
 def get_session_metadata(team: str, session_id: str):
     payload_dir = TEAMS_ROOT / team / "sessions" / session_id / "payload"
     if not payload_dir.exists():
         raise HTTPException(status_code=404, detail="Session payload not found")
+
+    # List all files in payload/
+    def list_files(path):
+        files = []
+        for f in path.iterdir():
+            if f.is_file():
+                files.append({"name": f.name, "size": f.stat().st_size, "type": "file"})
+            elif f.is_dir():
+                files.append({"name": f.name, "type": "directory"})
+        return files
+
+    file_list = list_files(payload_dir)
     mcp_file = payload_dir / "mcp_config.json"
+    mcp_config = None
     if mcp_file.exists():
         try:
-            return json.loads(mcp_file.read_text())
+            mcp_config = json.loads(mcp_file.read_text())
         except Exception:
             pass
-    return {"team": team, "session_id": session_id}
+    return {
+        "team": team,
+        "session_id": session_id,
+        "files": file_list,
+        "mcp_config": mcp_config,
+    }
+
+
+# 2b. Get file content from payload/ (with security checks)
+@router.get("/api/admin/sessions/{team}/{session_id}/file")
+def get_session_file(team: str, session_id: str, path: str):
+    payload_dir = TEAMS_ROOT / team / "sessions" / session_id / "payload"
+    file_path = payload_dir / path
+    # Prevent directory traversal
+    if (
+        not file_path.resolve().is_file()
+        or payload_dir not in file_path.resolve().parents
+    ):
+        raise HTTPException(status_code=404, detail="File not found or access denied")
+    try:
+        content = file_path.read_text(errors="replace")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {e}")
+    return {"name": path, "content": content}
 
 
 # 3. Get session filesystem tree (start from payload/)
@@ -51,13 +87,25 @@ def get_session_filesystem(team: str, session_id: str):
         raise HTTPException(status_code=404, detail="Session payload not found")
 
     def build_tree(path):
-        if path.is_file():
-            return {"name": path.name, "type": "file"}
-        return {
-            "name": path.name,
-            "type": "directory",
-            "children": [build_tree(child) for child in path.iterdir()],
-        }
+        try:
+            if path.is_file():
+                return {"name": path.name, "type": "file"}
+            children = []
+            for child in sorted(path.iterdir(), key=lambda x: x.name):
+                # Skip hidden files and directories
+                if child.name.startswith("."):
+                    continue
+                try:
+                    children.append(build_tree(child))
+                except Exception:
+                    continue
+            return {
+                "name": path.name,
+                "type": "directory",
+                "children": children,
+            }
+        except Exception:
+            return {"name": path.name, "type": "error"}
 
     return build_tree(payload_dir)
 
