@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import Chip from '@mui/material/Chip';
 import Autocomplete from '@mui/material/Autocomplete';
+import ThemedMarkdown from '../../components/ThemedMarkdown';
 
 // Add a Team type for clarity
 interface Team {
@@ -171,15 +172,7 @@ function ChecklistTab({ teamId }: { teamId: string }) {
             </Box>
             {!editing && (
                 <Paper elevation={2} sx={{ p: 3, maxWidth: 900, margin: '0 auto', bgcolor: '#fafbfc' }}>
-                    <ReactMarkdown
-                        components={{
-                            h1: ({ node, ...props }) => <Typography variant="h5" sx={{ mt: 2, mb: 1 }} {...props} />,
-                            h2: ({ node, ...props }) => <Typography variant="h6" sx={{ mt: 2, mb: 1 }} {...props} />,
-                            h3: ({ node, ...props }) => <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }} {...props} />,
-                            li: ({ node, ...props }) => <li style={{ marginBottom: 6 }} {...props} />,
-                            p: ({ node, ...props }) => <Typography variant="body1" sx={{ mb: 1 }} {...props} />,
-                        }}
-                    >{checklist}</ReactMarkdown>
+                    <ThemedMarkdown>{checklist}</ThemedMarkdown>
                 </Paper>
             )}
         </Box>
@@ -296,7 +289,7 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
                             <TextField multiline minRows={10} value={content} onChange={e => setContent(e.target.value)} fullWidth sx={{ mb: 2 }} />
                         ) : (
                             <Paper elevation={1} sx={{ p: 2, bgcolor: '#f5f5f5' }}>
-                                <pre>{content}</pre>
+                                <ThemedMarkdown>{content}</ThemedMarkdown>
                             </Paper>
                         )}
                         {editing && <Button variant="contained" color="primary" onClick={async () => {
@@ -399,11 +392,11 @@ function SessionsTab({ teamId }: { teamId: string }) {
                         <ul>{genLog.errors && genLog.errors.map((e: string, i: number) => <li key={i}>{e}</li>)}</ul>
                         <Typography variant="subtitle2" sx={{ mt: 2 }}>CLI Stdout:</Typography>
                         <Paper sx={{ p: 1, bgcolor: '#f5f5f5', mb: 2, maxHeight: 200, overflow: 'auto' }}>
-                            <pre style={{ margin: 0 }}>{genLog.stdout}</pre>
+                            <ThemedMarkdown>{genLog.stdout}</ThemedMarkdown>
                         </Paper>
                         <Typography variant="subtitle2">CLI Stderr:</Typography>
                         <Paper sx={{ p: 1, bgcolor: '#f5f5f5', maxHeight: 100, overflow: 'auto' }}>
-                            <pre style={{ margin: 0 }}>{genLog.stderr}</pre>
+                            <ThemedMarkdown>{genLog.stderr}</ThemedMarkdown>
                         </Paper>
                     </Box>
                 )}

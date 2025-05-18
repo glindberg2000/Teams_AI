@@ -12,6 +12,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import ReactMarkdown from 'react-markdown';
 import { useTheme } from '@mui/material/styles';
+import ThemedMarkdown from '../components/ThemedMarkdown';
 
 const roleIcons = {
     pm_guardian: <AssignmentIndIcon sx={{ bgcolor: '#1976d2', color: '#fff' }} />,
@@ -228,39 +229,7 @@ function RoleDetails({ role, onRoleUpdated, onRoleDeleted }) {
                 </AccordionSummary>
                 <AccordionDetails>
                     {overview && overview.trim().startsWith('#') ? (
-                        <Box sx={{
-                            p: 2,
-                            bgcolor: theme.palette.background.paper,
-                            color: theme.palette.text.primary,
-                            borderRadius: 1,
-                            overflowX: 'auto',
-                            '& h1, & h2, & h3, & h4, & h5, & h6': { color: theme.palette.text.primary },
-                            '& code': {
-                                bgcolor: theme.palette.mode === 'dark' ? '#232b3b' : '#f5f5f5',
-                                color: theme.palette.mode === 'dark' ? '#00bcd4' : '#1565c0',
-                                borderRadius: 1,
-                                px: 0.5,
-                                py: 0.2,
-                                fontSize: 14,
-                            },
-                            '& pre': {
-                                bgcolor: theme.palette.mode === 'dark' ? '#181f2a' : '#f5f5f5',
-                                color: theme.palette.text.primary,
-                                borderRadius: 1,
-                                p: 1,
-                                fontSize: 14,
-                                overflowX: 'auto',
-                            },
-                            '& blockquote': {
-                                borderLeft: `4px solid ${theme.palette.primary.main}`,
-                                bgcolor: theme.palette.mode === 'dark' ? '#181f2a' : '#f5f5f5',
-                                color: theme.palette.text.secondary,
-                                pl: 2,
-                                my: 1,
-                            },
-                        }}>
-                            <ReactMarkdown>{overview}</ReactMarkdown>
-                        </Box>
+                        <ThemedMarkdown>{overview}</ThemedMarkdown>
                     ) : (
                         <Box sx={{ fontFamily: 'monospace', fontSize: 14, bgcolor: '#f5f5f5', p: 2, borderRadius: 1, overflowX: 'auto' }}>
                             <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{overview || 'No overview available.'}</pre>

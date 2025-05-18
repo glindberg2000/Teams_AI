@@ -685,6 +685,99 @@ async def websocket_endpoint(websocket: WebSocket, team_id: str):
         while True:
             data = await websocket.receive_json()
             # Expecting {"user": ..., "message": ...}
+            store_message(team_id, data.get("user"), data.get("message"), channel=None)
             await manager.broadcast(team_id, data)
     except WebSocketDisconnect:
         manager.disconnect(team_id, websocket)
+
+
+# --- BEGIN: In-memory message store for chat history (prototype) ---
+from threading import Lock
+from datetime import datetime
+import re
+
+MESSAGE_STORE = {}  # team_id -> list of messages
+MESSAGE_ID_COUNTER = {}  # team_id -> int
+MESSAGE_STORE_LOCK = Lock()
+
+# Message format: {"id": int, "user": str, "message": str, "timestamp": str, "channel": str or None}
+
+
+def store_message(team_id, user, message, channel=None):
+    with MESSAGE_STORE_LOCK:
+        if team_id not in MESSAGE_STORE:
+            MESSAGE_STORE[team_id] = []
+            MESSAGE_ID_COUNTER[team_id] = 1
+        msg_id = MESSAGE_ID_COUNTER[team_id]
+        msg = {
+            "id": msg_id,
+            "user": user,
+            "message": message,
+            "timestamp": datetime.utcnow().isoformat(),
+            "channel": channel,
+        }
+        MESSAGE_STORE[team_id].append(msg)
+        MESSAGE_ID_COUNTER[team_id] += 1
+        return msg
+
+
+def get_messages(
+    team_id,
+    since_message_id=None,
+    sender=None,
+    limit=20,
+    mention_only=False,
+    dm_only=False,
+    content_regex=None,
+):
+    with MESSAGE_STORE_LOCK:
+        msgs = MESSAGE_STORE.get(team_id, [])
+        # Filter by since_message_id
+        if since_message_id is not None:
+            msgs = [m for m in msgs if m["id"] > int(since_message_id)]
+        # Filter by sender
+        if sender:
+            msgs = [m for m in msgs if m["user"] == sender]
+        # Filter by mention_only (if implemented)
+        # For now, just a placeholder: if mention_only, only messages containing '@' (simulate mention)
+        if mention_only:
+            msgs = [m for m in msgs if "@" in m["message"]]
+        # Filter by dm_only (not implemented, placeholder)
+        # If dm_only, only messages with channel == None
+        if dm_only:
+            msgs = [m for m in msgs if not m.get("channel")]
+        # Filter by content_regex
+        if content_regex:
+            msgs = [m for m in msgs if re.search(content_regex, m["message"])]
+        # Sort by id ascending (oldest to newest)
+        msgs = sorted(msgs, key=lambda m: m["id"])
+        # Apply limit
+        return msgs[:limit]
+
+
+# --- END: In-memory message store ---
+
+
+@app.get("/api/team/{team_id}/messages")
+def get_team_messages(
+    team_id: str,
+    since_message_id: int = None,
+    sender: str = None,
+    limit: int = 20,
+    mention_only: bool = False,
+    dm_only: bool = False,
+    content_regex: str = None,
+):
+    """
+    Retrieve messages for a team with optional filters.
+    - since_message_id: only messages with id > since_message_id
+    - sender: only messages from this user
+    - limit: max number of messages (default 20)
+    - mention_only: only messages containing '@' (simulate mention)
+    - dm_only: only messages with channel == None
+    - content_regex: only messages matching this regex
+    """
+    msgs = get_messages(
+        team_id, since_message_id, sender, limit, mention_only, dm_only, content_regex
+    )
+    return {"messages": msgs}

@@ -54,5 +54,9 @@ tasks/
 # Ignore all generated team folders
 teams/
 
+# But do NOT ignore frontend code for dynamic routes
+!frontend/next-frontend/src/app/teams/
+!frontend/next-frontend/src/app/teams/**
+
 # Ignore Cursor MCP config containing secrets
 .cursor/mcp.json
