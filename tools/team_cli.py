@@ -188,6 +188,11 @@ def create_session(args):
     payload_docs = session_path / "payload/docs"
     payload_docs.mkdir(parents=True, exist_ok=True)
 
+    # Remove any root-level docs directory if it exists (cleanup from old runs)
+    root_docs = session_path / "docs"
+    if root_docs.exists():
+        shutil.rmtree(root_docs)
+
     # Copy global docs if enabled
     include_global = getattr(
         args, "include_global_docs", True
@@ -462,11 +467,6 @@ def create_session(args):
         # Generate default MCP config
         mcp_config = {
             "mcpServers": {
-                "puppeteer": {
-                    "command": "npx",
-                    "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
-                    "env": {},
-                },
                 "github": {
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-github"],
@@ -504,6 +504,23 @@ def create_session(args):
                         "LOG_LEVEL": env_vars.get("LOG_LEVEL", ""),
                     },
                 },
+                "internal_chat": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-internal-chat"],
+                    "env": {
+                        "INTERNAL_CHAT_REPO_URL": env_vars.get(
+                            "INTERNAL_CHAT_REPO_URL",
+                            env_vars.get(
+                                "MCP_DISCORD_REPO_URL",
+                                "https://github.com/your-org/mcp-discord.git",
+                            ),
+                        ),
+                        "INTERNAL_CHAT_REPO_BRANCH": env_vars.get(
+                            "INTERNAL_CHAT_REPO_BRANCH",
+                            env_vars.get("MCP_DISCORD_REPO_BRANCH", "main"),
+                        ),
+                    },
+                },
             }
         }
 
@@ -513,12 +530,6 @@ def create_session(args):
     with open(mcp_config_path, "w") as f:
         json.dump(mcp_config, f, indent=4)
     print(f"Generated {mcp_config_path}")
-
-    # --- Copy restore script ---
-    restore_script = session_path / "payload/restore_payload.sh"
-    shutil.copy(SESSIONS_DIR / "_shared/restore_payload.sh", restore_script)
-    os.chmod(restore_script, 0o755)
-    print(f"Added restore script at {restore_script}")
 
     # --- Check for missing env keys ---
     required_keys = [

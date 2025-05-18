@@ -515,7 +515,6 @@ def copy_cline_templates_and_rules(project, roles, dry_run=False):
     base_templates = PROJECT_ROOT / "roles" / "_templates" / "cline_docs"
     shared_templates = PROJECT_ROOT / "roles" / "_templates" / "cline_docs_shared"
     windsurfrules = PROJECT_ROOT / "roles" / "_templates" / ".windsurfrules"
-    restore_script = PROJECT_ROOT / "roles" / "_templates" / "restore_payload.sh"
     windsurf_rules_src = PROJECT_ROOT / "roles" / "_templates" / ".windsurf" / "rules"
 
     # Copy shared cline docs to team root if not already present
@@ -534,16 +533,15 @@ def copy_cline_templates_and_rules(project, roles, dry_run=False):
         if role_cline_dir.exists():
             shutil.rmtree(role_cline_dir)
         shutil.copytree(base_templates, role_cline_dir)
-        # Copy .windsurfrules and restore script
+        # Copy .windsurfrules (but NOT restore_payload.sh)
         shutil.copy2(windsurfrules, payload_dir / ".windsurfrules")
-        shutil.copy2(restore_script, payload_dir / "restore_payload.sh")
         # Copy .windsurf/rules
         windsurf_rules_dst = payload_dir / ".windsurf" / "rules"
         if windsurf_rules_dst.exists():
             shutil.rmtree(windsurf_rules_dst)
         shutil.copytree(windsurf_rules_src, windsurf_rules_dst)
         print(
-            f"Populated {payload_dir} with Cline Memory Bank templates, .windsurfrules, restore_payload.sh, and .windsurf/rules"
+            f"Populated {payload_dir} with Cline Memory Bank templates, .windsurfrules, and .windsurf/rules"
         )
 
 

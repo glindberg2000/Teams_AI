@@ -13,6 +13,8 @@ import os
 import shutil
 import subprocess
 import tempfile
+import re
+import logging
 
 router = APIRouter()
 
@@ -164,7 +166,18 @@ def list_team_sessions(team: str):
     sessions_dir = TEAMS_ROOT / team / "sessions"
     if not sessions_dir.exists() or not sessions_dir.is_dir():
         return []
-    return [f.name for f in sessions_dir.iterdir() if f.is_dir()]
+    sessions = []
+    for f in sessions_dir.iterdir():
+        if f.is_dir():
+            # Check for .devcontainer and payload/.env to determine status
+            devcontainer = f / ".devcontainer"
+            payload_env = f / "payload/.env"
+            if devcontainer.exists() and payload_env.exists():
+                status = "generated"
+            else:
+                status = "scaffolded"
+            sessions.append({"name": f.name, "status": status})
+    return sessions
 
 
 @router.post("/api/team/{team}/generate-sessions")
@@ -218,6 +231,11 @@ async def generate_team_sessions(team: str, request: Request):
             tmp.writelines(cleaned_lines)
             tmp.flush()
             tmp_env_path = tmp.name
+        # Log the contents of the temp env file
+        with open(tmp_env_path) as f:
+            env_contents = f.read()
+        print(f"[DEBUG] Temp env file path: {tmp_env_path}")
+        print(f"[DEBUG] Temp env file contents:\n{env_contents}")
         # Build CLI command exactly as in working shell
         cmd = [
             sys.executable,
@@ -230,13 +248,33 @@ async def generate_team_sessions(team: str, request: Request):
             cmd.append("--overwrite")
         # Always capture full stdout/stderr, and set cwd to project root
         project_root = Path(__file__).parent.parent.parent.resolve()
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=project_root)
+        print(f"[DEBUG] Running CLI command: {' '.join(cmd)}")
+        print(f"[DEBUG] Working directory: {project_root}")
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, cwd=project_root
+            )
+        except Exception as e:
+            print(f"[ERROR] Exception running subprocess: {e}")
+            traceback.print_exc()
+            return {"error": f"Exception running subprocess: {e}"}, 500
+        print(f"[DEBUG] CLI stdout:\n{result.stdout}")
+        print(f"[DEBUG] CLI stderr:\n{result.stderr}")
+        print(f"[DEBUG] CLI exit code: {result.returncode}")
+        created = re.findall(r"Created session: ([^\n]+)", result.stdout)
+        skipped = re.findall(r"Skipped session: ([^\n]+)", result.stdout)
+        errors = re.findall(r"Error: ([^\n]+)", result.stderr + result.stdout)
         return {
             "status": "ok" if result.returncode == 0 else "error",
             "stdout": result.stdout,
             "stderr": result.stderr,
             "command": " ".join(cmd),
             "exit_code": result.returncode,
+            "created": created,
+            "skipped": skipped,
+            "errors": errors,
+            "env_file": tmp_env_path,
+            "env_contents": env_contents,
         }, (200 if result.returncode == 0 else 500)
     except Exception as e:
         traceback.print_exc()

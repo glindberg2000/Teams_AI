@@ -323,7 +323,7 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
 }
 
 function SessionsTab({ teamId }: { teamId: string }) {
-    const [sessions, setSessions] = useState<string[]>([]);
+    const [sessions, setSessions] = useState<{ name: string; status: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [snackbar, setSnackbar] = useState<{ open: boolean, message: string, severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
     const [overwrite, setOverwrite] = useState(false);
@@ -433,10 +433,17 @@ function SessionsTab({ teamId }: { teamId: string }) {
         <Typography variant="h6" sx={{ mb: 2 }}>Sessions</Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {sessions.map(s => (
-                <Card key={s} sx={{ minWidth: 220, maxWidth: 300, p: 2, mb: 2 }}>
-                    <Typography variant="subtitle1" sx={{ mb: 1 }}>{s}</Typography>
-                    <Button variant="outlined" size="small" onClick={() => setSelectedSession(s)}>Open Session</Button>
-                    <Button variant="contained" size="small" sx={{ ml: 1 }} onClick={() => openAdminModal(s)}>Details</Button>
+                <Card key={s.name} sx={{ minWidth: 220, maxWidth: 300, p: 2, mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ flex: 1 }}>{s.name}</Typography>
+                        {s.status === 'generated' ? (
+                            <Chip label="Generated" color="success" size="small" sx={{ ml: 1 }} />
+                        ) : (
+                            <Chip label="Scaffolded" color="warning" size="small" sx={{ ml: 1 }} />
+                        )}
+                    </Box>
+                    <Button variant="outlined" size="small" onClick={() => setSelectedSession(s.name)}>Open Session</Button>
+                    <Button variant="contained" size="small" sx={{ ml: 1 }} onClick={() => openAdminModal(s.name)}>Details</Button>
                 </Card>
             ))}
         </Box>

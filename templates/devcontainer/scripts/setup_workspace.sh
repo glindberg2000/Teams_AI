@@ -68,4 +68,24 @@ if [ -f "/workspaces/project/.devcontainer/scripts/restore_payload.sh" ]; then
     bash /workspaces/project/.devcontainer/scripts/restore_payload.sh
 fi
 
+# Remove any root-level docs directory if it exists (cleanup from old runs)
+if [ -d "../docs" ]; then
+  echo "[CLEANUP] Removing root-level docs directory (../docs) from previous runs."
+  rm -rf ../docs
+fi
+
+# Ensure payload/docs exists
+if [ ! -d "./docs" ]; then
+  echo "[INFO] Creating payload/docs directory."
+  mkdir -p ./docs
+fi
+
+# Only operate on payload/docs, payload/cline_docs, payload/cline_docs_shared
+# (Add any setup logic here as needed)
+
+# Example: Print structure for verification
+ls -l ./docs
+ls -l ./cline_docs
+ls -l ./cline_docs_shared
+
 # --- End of setup --- 

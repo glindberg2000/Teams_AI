@@ -31,6 +31,7 @@ const drawerWidth = 220;
 const navLinks = [
   { to: '/', label: 'Dashboard', icon: <HomeIcon /> },
   { to: '/teams', label: 'Teams', icon: <GroupIcon /> },
+  { to: '/team-templates', label: 'Team Templates', icon: <ListAltIcon /> },
   { to: '/roles', label: 'Role Templates', icon: <AssignmentIcon /> },
   { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
   { to: '/help', label: 'Help', icon: <HelpIcon /> },
