@@ -358,7 +358,32 @@ def list_teams():
                         name = line.strip().split("=", 1)[1]
                     if line.startswith("TEAM_DESCRIPTION="):
                         description = line.strip().split("=", 1)[1]
-        teams.append({"id": team_folder.name, "name": name, "description": description})
+        # --- New: Determine team status ---
+        sessions_dir = team_folder / "sessions"
+        status = "empty"
+        if sessions_dir.exists() and sessions_dir.is_dir():
+            session_statuses = []
+            for s in sessions_dir.iterdir():
+                if s.is_dir():
+                    devcontainer = s / ".devcontainer"
+                    payload_env = s / "payload/.env"
+                    if devcontainer.exists() and payload_env.exists():
+                        session_statuses.append("generated")
+                    else:
+                        session_statuses.append("scaffolded")
+            if session_statuses:
+                if all(st == "generated" for st in session_statuses):
+                    status = "ready"
+                elif any(st == "scaffolded" for st in session_statuses):
+                    status = "scaffolded"
+        teams.append(
+            {
+                "id": team_folder.name,
+                "name": name,
+                "description": description,
+                "status": status,
+            }
+        )
     print(f"[DEBUG] /api/teams: Returning teams: {teams}")
     return JSONResponse(content=teams)
 
@@ -701,6 +726,8 @@ import re
 MESSAGE_STORE = {}  # team_id -> list of messages
 MESSAGE_ID_COUNTER = {}  # team_id -> int
 MESSAGE_STORE_LOCK = Lock()
+# NEW: Per-user, per-team last read message id
+LAST_READ_MESSAGE_ID = {}  # (team_id, user) -> int
 
 # Message format: {"id": int, "user": str, "message": str, "timestamp": str, "channel": str or None}
 
@@ -763,23 +790,130 @@ def get_messages(
 @app.get("/api/team/{team_id}/messages")
 def get_team_messages(
     team_id: str,
-    since_message_id: int = None,
-    sender: str = None,
+    user: str,  # REQUIRED for unread tracking
     limit: int = 20,
     mention_only: bool = False,
     dm_only: bool = False,
     content_regex: str = None,
+    request: Request = None,
 ):
     """
-    Retrieve messages for a team with optional filters.
-    - since_message_id: only messages with id > since_message_id
-    - sender: only messages from this user
+    Retrieve unread messages for a user in a team.
+    - user: required, the user requesting messages
     - limit: max number of messages (default 20)
-    - mention_only: only messages containing '@' (simulate mention)
-    - dm_only: only messages with channel == None
-    - content_regex: only messages matching this regex
     """
-    msgs = get_messages(
-        team_id, since_message_id, sender, limit, mention_only, dm_only, content_regex
+    print(
+        f"[DEBUG] GET /api/team/{team_id}/messages: method={request.method if request else 'GET'}, path={request.url if request else ''}, query={request.query_params if request else ''}"
     )
+    # Get last read message id for this user/team
+    last_read_id = LAST_READ_MESSAGE_ID.get((team_id, user), 0)
+    # Get all messages with id > last_read_id
+    msgs = get_messages(
+        team_id,
+        since_message_id=last_read_id,
+        limit=limit,
+        mention_only=mention_only,
+        dm_only=dm_only,
+        content_regex=content_regex,
+    )
+    # Update last read id if any messages returned
+    if msgs:
+        LAST_READ_MESSAGE_ID[(team_id, user)] = msgs[-1]["id"]
     return {"messages": msgs}
+
+
+# --- MessageFilter model for advanced filtering ---
+class MessageFilter(BaseModel):
+    user: Optional[str] = None  # For unread tracking
+    channels: Optional[List[str]] = None  # If None, default to ["general"]
+    dm_only: Optional[bool] = None
+    mention_only: Optional[bool] = None
+    content_regex: Optional[str] = None
+    from_user: Optional[str] = None
+    before: Optional[str] = None
+    after: Optional[str] = None
+    sort: Optional[str] = "asc"
+    limit: Optional[int] = 20
+
+
+# --- Helper: filter messages using MessageFilter ---
+def filter_messages(team_id, filter: MessageFilter, since_message_id=None):
+    with MESSAGE_STORE_LOCK:
+        msgs = MESSAGE_STORE.get(team_id, [])
+        # Filter by since_message_id (for unread tracking)
+        if since_message_id is not None:
+            msgs = [m for m in msgs if m["id"] > int(since_message_id)]
+        # Filter by user (from_user = sender, user = recipient)
+        if filter.from_user:
+            msgs = [m for m in msgs if m["user"] == filter.from_user]
+        # Filter by channels
+        if filter.channels:
+            msgs = [m for m in msgs if m.get("channel", "general") in filter.channels]
+        # Filter by mention_only
+        if filter.mention_only:
+            msgs = [m for m in msgs if "@" in m["message"]]
+        # Filter by dm_only
+        if filter.dm_only:
+            msgs = [m for m in msgs if not m.get("channel")]
+        # Filter by content_regex
+        if filter.content_regex:
+            import re
+
+            msgs = [m for m in msgs if re.search(filter.content_regex, m["message"])]
+        # Filter by before/after timestamp
+        if filter.before:
+            msgs = [m for m in msgs if m["timestamp"] < filter.before]
+        if filter.after:
+            msgs = [m for m in msgs if m["timestamp"] > filter.after]
+        # Sort
+        reverse = filter.sort == "desc"
+        msgs = sorted(msgs, key=lambda m: m["id"], reverse=reverse)
+        # Apply limit
+        return msgs[: (filter.limit or 20)]
+
+
+# --- New: POST endpoint for advanced message queries ---
+@app.post("/api/team/{team_id}/messages/query")
+def query_team_messages(
+    team_id: str, filter: MessageFilter = Body(...), request: Request = None
+):
+    print(
+        f"[DEBUG] POST /api/team/{team_id}/messages/query: method={request.method if request else 'POST'}, path={request.url if request else ''}, body={filter.dict() if filter else ''}"
+    )
+    # Sensible defaults
+    if not filter.channels:
+        filter.channels = ["general"]
+    if not filter.limit:
+        filter.limit = 20
+    # For unread tracking, use last_read_id if user is specified
+    since_message_id = None
+    if filter.user:
+        since_message_id = LAST_READ_MESSAGE_ID.get((team_id, filter.user), 0)
+    msgs = filter_messages(team_id, filter, since_message_id=since_message_id)
+    # Update last read id if any messages returned and user is specified
+    if msgs and filter.user:
+        LAST_READ_MESSAGE_ID[(team_id, filter.user)] = msgs[-1]["id"]
+    return {"messages": msgs}
+
+
+# Add a global exception handler for 422 errors
+from fastapi.responses import JSONResponse
+from fastapi.exception_handlers import RequestValidationError
+from fastapi.exceptions import RequestValidationError
+from starlette.requests import Request as StarletteRequest
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: StarletteRequest, exc: RequestValidationError
+):
+    print(
+        f"[ERROR] 422 Unprocessable Content: {exc.errors()} | body={await request.body()}"
+    )
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "422 Unprocessable Content: Check that you are using the correct endpoint and request format. For GET /messages, use query parameters only. For POST /messages/query, use a JSON body matching the MessageFilter model.",
+            "errors": exc.errors(),
+        },
+    )
