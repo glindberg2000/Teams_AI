@@ -37,6 +37,11 @@ from backend.routes.team_files import router as team_files_router
 from backend.routes.admin_sessions import router as admin_sessions_router
 from backend.routes.chat import router as chat_router
 from backend.services import chat_service
+import asyncio
+import traceback
+from datetime import datetime
+from starlette.websockets import WebSocketDisconnect
+from backend.ws_manager import manager
 
 app = FastAPI()
 
@@ -687,42 +692,221 @@ def delete_team(team_id: str):
     return {"status": "deleted", "team": team_id}
 
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, team_id: str, websocket: WebSocket):
-        await websocket.accept()
-        if team_id not in self.active_connections:
-            self.active_connections[team_id] = []
-        self.active_connections[team_id].append(websocket)
-
-    def disconnect(self, team_id: str, websocket: WebSocket):
-        if team_id in self.active_connections:
-            self.active_connections[team_id].remove(websocket)
-            if not self.active_connections[team_id]:
-                del self.active_connections[team_id]
-
-    async def broadcast(self, team_id: str, message: dict):
-        if team_id in self.active_connections:
-            for connection in self.active_connections[team_id]:
-                await connection.send_json(message)
-
-
-manager = ConnectionManager()
-
-
 @app.websocket("/ws/{team_id}")
-async def websocket_endpoint(websocket: WebSocket, team_id: str):
-    await manager.connect(team_id, websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            # Expecting {"user": ..., "message": ...}
-            store_message(team_id, data.get("user"), data.get("message"), channel=None)
-            await manager.broadcast(team_id, data)
-    except WebSocketDisconnect:
-        manager.disconnect(team_id, websocket)
+async def websocket_team_default(websocket: WebSocket, team_id: str):
+    channel_id = "general"
+    if USE_PERSISTENT_CHAT:
+        print(
+            f"[CHAT][WS] Persistent chat enabled (DB). Team: {team_id}, Channel: {channel_id}"
+        )
+        await websocket.accept()
+        await websocket.send_json(
+            {
+                "user": "system",
+                "message": f"Connected to channel '{channel_id}'",
+                "timestamp": datetime.utcnow().isoformat(),
+                "channel": channel_id,
+                "type": "ready",
+            }
+        )
+        try:
+            try:
+                channels = await chat_service.list_channels(team_id)
+                print(f"[CHAT][WS][DEBUG] Channels for team {team_id}: {channels}")
+                channel_obj = next((c for c in channels if c.name == channel_id), None)
+                print(f"[CHAT][WS][DEBUG] Using channel_obj: {channel_obj}")
+                if not channel_obj:
+                    channel_obj = await chat_service.create_channel(team_id, channel_id)
+                recent_msgs = await chat_service.list_messages(
+                    team_id, channel_obj.id, 50
+                )
+                print(
+                    f"[CHAT][WS][DEBUG] Fetched {len(recent_msgs)} messages for channel {channel_id}"
+                )
+                for msg in reversed(recent_msgs):
+                    msg_dict = {
+                        "user": msg.user,
+                        "message": msg.message,
+                        "timestamp": msg.timestamp.isoformat(),
+                        "channel": channel_id,
+                    }
+                    print(f"[CHAT][WS][DEBUG] Sending history message dict: {msg_dict}")
+                    try:
+                        await websocket.send_json(msg_dict)
+                    except (WebSocketDisconnect, RuntimeError) as e:
+                        print(
+                            f"[CHAT][WS][DEBUG] Client disconnected during history send: {e}"
+                        )
+                        return
+            except Exception as e:
+                print(f"[CHAT][WS][ERROR] Exception sending message history: {e}")
+                return
+            print(
+                f"[CHAT][WS][DEBUG] Entering main message loop for team {team_id}, channel {channel_id}"
+            )
+            while True:
+                try:
+                    data = await websocket.receive_json()
+                    user = data.get("user", "anonymous")
+                    message = data.get("message", "")
+                    if not message:
+                        continue
+                    await chat_service.post_message(
+                        team_id, user, message, channel_obj.id
+                    )
+                    msg_dict = {
+                        "user": user,
+                        "message": message,
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "channel": channel_id,
+                    }
+                    await websocket.send_json(msg_dict)
+                except (WebSocketDisconnect, RuntimeError) as e:
+                    print(
+                        f"[CHAT][WS][DEBUG] Client disconnected during main loop: {e}"
+                    )
+                    break
+                except Exception as e:
+                    print(f"[CHAT][WS][ERROR] Exception in main message loop: {e}")
+                    break
+        finally:
+            print(
+                f"[CHAT][WS] Connection closed (finally). Team: {team_id}, Channel: {channel_id}"
+            )
+    else:
+        print(
+            f"[CHAT][WS] In-memory chat enabled. Team: {team_id}, Channel: {channel_id}"
+        )
+        await manager.connect(team_id, channel_id, websocket)
+        try:
+            while True:
+                data = await websocket.receive_json()
+                store_message(
+                    team_id, data.get("user"), data.get("message"), channel=channel_id
+                )
+                await manager.broadcast(team_id, channel_id, data)
+        except WebSocketDisconnect:
+            manager.disconnect(team_id, channel_id, websocket)
+        except Exception as e:
+            print(f"[CHAT][WS][ERROR] Exception in in-memory handler: {e}")
+            traceback.print_exc()
+            try:
+                await websocket.close(code=1011, reason=f"Server error: {e}")
+            except Exception:
+                pass
+
+
+@app.websocket("/ws/{team_id}/{channel_id}")
+async def websocket_team_channel(websocket: WebSocket, team_id: str, channel_id: str):
+    if USE_PERSISTENT_CHAT:
+        print(
+            f"[CHAT][WS] Persistent chat enabled (DB). Team: {team_id}, Channel: {channel_id}"
+        )
+        await websocket.accept()
+        await websocket.send_json(
+            {
+                "user": "system",
+                "message": f"Connected to channel '{channel_id}'",
+                "timestamp": datetime.utcnow().isoformat(),
+                "channel": channel_id,
+                "type": "ready",
+            }
+        )
+        try:
+            try:
+                channels = await chat_service.list_channels(team_id)
+                print(f"[CHAT][WS][DEBUG] Channels for team {team_id}: {channels}")
+                channel_obj = next((c for c in channels if c.name == channel_id), None)
+                print(f"[CHAT][WS][DEBUG] Using channel_obj: {channel_obj}")
+                if not channel_obj:
+                    channel_obj = await chat_service.create_channel(team_id, channel_id)
+                recent_msgs = await chat_service.list_messages(
+                    team_id, channel_obj.id, 50
+                )
+                print(
+                    f"[CHAT][WS][DEBUG] Fetched {len(recent_msgs)} messages for channel {channel_id}"
+                )
+                for msg in reversed(recent_msgs):
+                    msg_dict = {
+                        "user": msg.user,
+                        "message": msg.message,
+                        "timestamp": msg.timestamp.isoformat(),
+                        "channel": channel_id,
+                    }
+                    print(f"[CHAT][WS][DEBUG] Sending history message dict: {msg_dict}")
+                    try:
+                        await websocket.send_json(msg_dict)
+                    except (WebSocketDisconnect, RuntimeError) as e:
+                        print(
+                            f"[CHAT][WS][DEBUG] Client disconnected during history send: {e}"
+                        )
+                        return
+            except Exception as e:
+                print(f"[CHAT][WS][ERROR] Exception sending message history: {e}")
+                return
+            print(
+                f"[CHAT][WS][DEBUG] Entering main message loop for team {team_id}, channel {channel_id}"
+            )
+            while True:
+                try:
+                    data = await websocket.receive_json()
+                    user = data.get("user", "anonymous")
+                    message = data.get("message", "")
+                    if not message:
+                        continue
+                    await chat_service.post_message(
+                        team_id, user, message, channel_obj.id
+                    )
+                    msg_dict = {
+                        "user": user,
+                        "message": message,
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "channel": channel_id,
+                    }
+                    await websocket.send_json(msg_dict)
+                except (WebSocketDisconnect, RuntimeError) as e:
+                    print(
+                        f"[CHAT][WS][DEBUG] Client disconnected during main loop: {e}"
+                    )
+                    break
+                except Exception as e:
+                    print(f"[CHAT][WS][ERROR] Exception in main message loop: {e}")
+                    break
+        finally:
+            print(
+                f"[CHAT][WS] Connection closed (finally). Team: {team_id}, Channel: {channel_id}"
+            )
+    else:
+        print(
+            f"[CHAT][WS] In-memory chat enabled. Team: {team_id}, Channel: {channel_id}"
+        )
+        await manager.connect(team_id, channel_id, websocket)
+        try:
+            while True:
+                data = await websocket.receive_json()
+                user = data.get("user", "anonymous")
+                message = data.get("message", "")
+                if not message:
+                    continue
+                # Store message (optional, for in-memory history)
+                store_message(team_id, user, message, channel=channel_id)
+                # Always broadcast a full message dict
+                msg_dict = {
+                    "user": user,
+                    "message": message,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "channel": channel_id,
+                }
+                await manager.broadcast(team_id, channel_id, msg_dict)
+        except WebSocketDisconnect:
+            manager.disconnect(team_id, channel_id, websocket)
+        except Exception as e:
+            print(f"[CHAT][WS][ERROR] Exception in in-memory handler: {e}")
+            traceback.print_exc()
+            try:
+                await websocket.close(code=1011, reason=f"Server error: {e}")
+            except Exception:
+                pass
 
 
 # --- BEGIN: In-memory message store for chat history (prototype) ---
@@ -730,21 +914,24 @@ from threading import Lock
 from datetime import datetime
 import re
 
-MESSAGE_STORE = {}  # team_id -> list of messages
-MESSAGE_ID_COUNTER = {}  # team_id -> int
+# Now store messages by (team_id, channel_id)
+MESSAGE_STORE = {}  # (team_id, channel_id) -> list of messages
+MESSAGE_ID_COUNTER = {}  # (team_id, channel_id) -> int
 MESSAGE_STORE_LOCK = Lock()
-# NEW: Per-user, per-team last read message id
-LAST_READ_MESSAGE_ID = {}  # (team_id, user) -> int
+# NEW: Per-user, per-team, per-channel last read message id
+LAST_READ_MESSAGE_ID = {}  # (team_id, channel_id, user) -> int
 
-# Message format: {"id": int, "user": str, "message": str, "timestamp": str, "channel": str or None}
+# Message format: {"id": int, "user": str, "message": str, "timestamp": str, "channel": str}
 
 
 def store_message(team_id, user, message, channel=None):
+    channel = channel or "general"
+    key = (team_id, channel)
     with MESSAGE_STORE_LOCK:
-        if team_id not in MESSAGE_STORE:
-            MESSAGE_STORE[team_id] = []
-            MESSAGE_ID_COUNTER[team_id] = 1
-        msg_id = MESSAGE_ID_COUNTER[team_id]
+        if key not in MESSAGE_STORE:
+            MESSAGE_STORE[key] = []
+            MESSAGE_ID_COUNTER[key] = 1
+        msg_id = MESSAGE_ID_COUNTER[key]
         msg = {
             "id": msg_id,
             "user": user,
@@ -752,34 +939,71 @@ def store_message(team_id, user, message, channel=None):
             "timestamp": datetime.utcnow().isoformat(),
             "channel": channel,
         }
-        MESSAGE_STORE[team_id].append(msg)
-        MESSAGE_ID_COUNTER[team_id] += 1
+        MESSAGE_STORE[key].append(msg)
+        MESSAGE_ID_COUNTER[key] += 1
         return msg
 
 
 def get_messages(
     team_id,
+    channel=None,
     since_message_id=None,
     sender=None,
     limit=20,
     mention_only=False,
     dm_only=False,
     content_regex=None,
+    user=None,  # Pass user for mention filtering
 ):
+    channel = channel or "general"
+    key = (team_id, channel)
     with MESSAGE_STORE_LOCK:
-        msgs = MESSAGE_STORE.get(team_id, [])
+        msgs = MESSAGE_STORE.get(key, [])
         # Filter by since_message_id
         if since_message_id is not None:
             msgs = [m for m in msgs if m["id"] > int(since_message_id)]
-        # Filter by sender
-        if sender:
-            msgs = [m for m in msgs if m["user"] == sender]
-        # Filter by mention_only (if implemented)
-        # For now, just a placeholder: if mention_only, only messages containing '@' (simulate mention)
+        # Debug print for user param
+        print(
+            f"[DEBUG] user param for mention filtering: {user!r} (type: {type(user)})"
+        )
+        # Fix mention_only logic
         if mention_only:
-            msgs = [m for m in msgs if "@" in m["message"]]
+            # Treat 'None' (string) and empty string as not provided
+            if user and user != "None":
+                pattern = re.compile(
+                    rf"(?:^|[^\\w])@{re.escape(user)}(?:[^\\w]|$)", re.IGNORECASE
+                )
+                print(f"[DEBUG] Filtering for @{user} mention: regex={pattern.pattern}")
+                matched_msgs = []
+                for m in msgs:
+                    msg_text = m["message"]
+                    print(f"[DEBUG] Raw message repr: {repr(msg_text)}")
+                    match = pattern.search(msg_text)
+                    print(
+                        f"[DEBUG] Checking message: {msg_text!r} | Match: {bool(match)}"
+                    )
+                    if match:
+                        matched_msgs.append(m)
+                print(
+                    f"[DEBUG] Total messages matched for @{user}: {len(matched_msgs)} out of {len(msgs)}"
+                )
+                msgs = matched_msgs
+            else:
+                print(f"[DEBUG] Filtering for any @ mention: regex=@\\w+")
+                matched_msgs = []
+                for m in msgs:
+                    msg_text = m["message"]
+                    match = re.search(r"@\w+", msg_text)
+                    print(
+                        f"[DEBUG] Checking message: {msg_text!r} | Match: {bool(match)}"
+                    )
+                    if match:
+                        matched_msgs.append(m)
+                print(
+                    f"[DEBUG] Total messages matched for any @mention: {len(matched_msgs)} out of {len(msgs)}"
+                )
+                msgs = matched_msgs
         # Filter by dm_only (not implemented, placeholder)
-        # If dm_only, only messages with channel == None
         if dm_only:
             msgs = [m for m in msgs if not m.get("channel")]
         # Filter by content_regex
@@ -791,13 +1015,11 @@ def get_messages(
         return msgs[:limit]
 
 
-# --- END: In-memory message store ---
-
-
+# Update get_team_messages and query_team_messages to use channel param or default to 'general'
 @app.get("/api/team/{team_id}/messages")
 def get_team_messages(
     team_id: str,
-    user: str,  # REQUIRED for unread tracking
+    user: Optional[str] = None,  # Now optional
     limit: int = 20,
     mention_only: bool = False,
     dm_only: bool = False,
@@ -805,21 +1027,21 @@ def get_team_messages(
     request: Request = None,
 ):
     """
-    Retrieve unread messages for a user in a team.
-    - user: required, the user requesting messages
+    Retrieve unread messages for a user in a team, or all unread messages if no user is specified.
+    - user: optional, the user requesting messages (for unread tracking)
+    - mention_only: if true, only messages mentioning @user (if user is provided or from env)
     - limit: max number of messages (default 20)
     """
     if USE_PERSISTENT_CHAT:
         # Use persistent DB backend
-        # Find the 'general' channel for this team (or first channel)
-        import asyncio
-
-        async def get_messages():
+        # TODO: If mention_only, use user or INTERNAL_CHAT_USER for mention filtering in DB query
+        async def async_get_messages():
             channels = await chat_service.list_channels(team_id)
             if not channels:
                 return {"messages": []}
             channel = next((c for c in channels if c.name == "general"), channels[0])
             messages = await chat_service.list_messages(team_id, channel.id, limit)
+            # TODO: Filter for mentions in DB if needed
             return {
                 "messages": [
                     {
@@ -833,26 +1055,39 @@ def get_team_messages(
                 ]
             }
 
-        return asyncio.run(get_messages())
+        return asyncio.run(async_get_messages())
     # Legacy in-memory logic
     print(
         f"[DEBUG] GET /api/team/{team_id}/messages: method={request.method if request else 'GET'}, path={request.url if request else ''}, query={request.query_params if request else ''}"
     )
-    # Get last read message id for this user/team
-    last_read_id = LAST_READ_MESSAGE_ID.get((team_id, user), 0)
-    # Get all messages with id > last_read_id
-    msgs = get_messages(
-        team_id,
-        since_message_id=last_read_id,
-        limit=limit,
-        mention_only=mention_only,
-        dm_only=dm_only,
-        content_regex=content_regex,
-    )
-    # Update last read id if any messages returned
-    if msgs:
-        LAST_READ_MESSAGE_ID[(team_id, user)] = msgs[-1]["id"]
-    return {"messages": msgs}
+    if user:
+        # Get last read message id for this user/team
+        last_read_id = LAST_READ_MESSAGE_ID.get((team_id, user), 0) if user else 0
+        # Get all messages with id > last_read_id
+        msgs = get_messages(
+            team_id,
+            since_message_id=last_read_id,
+            limit=limit,
+            mention_only=mention_only,
+            dm_only=dm_only,
+            content_regex=content_regex,
+            user=user,
+        )
+        # Update last read id if any messages returned
+        if msgs and user:
+            LAST_READ_MESSAGE_ID[(team_id, user)] = msgs[-1]["id"]
+        return {"messages": msgs}
+    else:
+        # No user specified: return all unread messages for the team/channel (no user filter, no last read tracking)
+        msgs = get_messages(
+            team_id,
+            limit=limit,
+            mention_only=mention_only,
+            dm_only=dm_only,
+            content_regex=content_regex,
+            # user will be None, so get_messages will use env var if needed
+        )
+        return {"messages": msgs}
 
 
 # --- MessageFilter model for advanced filtering ---
@@ -890,8 +1125,6 @@ def filter_messages(team_id, filter: MessageFilter, since_message_id=None):
             msgs = [m for m in msgs if not m.get("channel")]
         # Filter by content_regex
         if filter.content_regex:
-            import re
-
             msgs = [m for m in msgs if re.search(filter.content_regex, m["message"])]
         # Filter by before/after timestamp
         if filter.before:
