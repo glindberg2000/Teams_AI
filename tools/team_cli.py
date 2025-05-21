@@ -207,6 +207,9 @@ def create_session(args):
                     target_path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy(f, target_path)
                     docs_included.append(f"global/{relative_path}")
+            print(
+                "[INFO] checklist.md and env.template are only copied to payload/docs/global/ (canonical location)"
+            )
 
     # Copy project docs if --project is set and enabled
     if hasattr(args, "project") and args.project:
@@ -378,6 +381,39 @@ def create_session(args):
         if k in template_vars:
             env_vars[k] = template_vars[k]
 
+    # Ensure MCP_DISCORD_REPO_URL and MCP_DISCORD_REPO_BRANCH have sensible defaults
+    def is_dummy(val):
+        return not val or val.strip().startswith("https://dummy.url")
+
+    if is_dummy(env_vars.get("MCP_DISCORD_REPO_URL")):
+        env_vars["MCP_DISCORD_REPO_URL"] = (
+            "https://github.com/glindberg2000/mcp-discord.git"
+        )
+        print(
+            "[INFO] MCP_DISCORD_REPO_URL was missing or dummy, set to https://github.com/glindberg2000/mcp-discord.git"
+        )
+    if not env_vars.get("MCP_DISCORD_REPO_BRANCH") or "#" in str(
+        env_vars.get("MCP_DISCORD_REPO_BRANCH")
+    ):
+        env_vars["MCP_DISCORD_REPO_BRANCH"] = "main"
+        print(
+            "[INFO] MCP_DISCORD_REPO_BRANCH not set or contained comment, using default: main"
+        )
+    if is_dummy(env_vars.get("PROJECT_REPO_URL")):
+        env_vars["PROJECT_REPO_URL"] = "https://github.com/your-org/your-project.git"
+        print(
+            "[INFO] PROJECT_REPO_URL was missing or dummy, set to https://github.com/your-org/your-project.git"
+        )
+    # Auto-generate DOCKER_GROUP and DOCKER_NETWORK per team
+    import hashlib
+
+    team_id = env_vars.get("TEAM_NAME", "TeamAI")
+    docker_group = int(hashlib.sha256(team_id.encode()).hexdigest(), 16) % 60000 + 1000
+    env_vars["DOCKER_GROUP"] = str(docker_group)
+    env_vars["DOCKER_NETWORK"] = f"TeamAI-{team_id}"
+    print(f"[INFO] DOCKER_GROUP set to {docker_group} for team {team_id}")
+    print(f"[INFO] DOCKER_NETWORK set to TeamAI-{team_id}")
+
     # Helper to quote values with spaces
     def quote_if_needed(val):
         if (
@@ -465,6 +501,11 @@ def create_session(args):
             mcp_config = {}
     else:
         # Generate default MCP config
+        internal_chat_team_id = env_vars.get("TEAM_NAME", "")
+        internal_chat_user = name if "name" in locals() else ""
+        print(
+            f"[INFO] Setting INTERNAL_CHAT_TEAM_ID={internal_chat_team_id}, INTERNAL_CHAT_USER={internal_chat_user} in mcp_config.json"
+        )
         mcp_config = {
             "mcpServers": {
                 "github": {
@@ -519,6 +560,8 @@ def create_session(args):
                             "INTERNAL_CHAT_REPO_BRANCH",
                             env_vars.get("MCP_DISCORD_REPO_BRANCH", "main"),
                         ),
+                        "INTERNAL_CHAT_TEAM_ID": internal_chat_team_id,
+                        "INTERNAL_CHAT_USER": internal_chat_user,
                     },
                 },
             }

@@ -68,6 +68,17 @@
                 "DISCORD_LOG_LEVEL": "info",
                 "DEFAULT_SERVER_ID": "${DISCORD_GUILD_ID}"
             }
+        },
+        "internal-chat": {
+            "command": "/workspaces/project/.venv/bin/internal-chat-mcp",
+            "args": [
+                "--mode",
+                "stdio"
+            ],
+            "env": {
+                "INTERNAL_CHAT_TEAM_ID": "${INTERNAL_CHAT_TEAM_ID}",
+                "INTERNAL_CHAT_USER": "${INTERNAL_CHAT_USER}"
+            }
         }
     }
 }

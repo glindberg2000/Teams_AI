@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import Link from 'next/link';
 import React from 'react';
+import Chip from '@mui/material/Chip';
 
 interface Team {
     id: string;
     name: string;
     description: string;
+    status?: string;
     // Add more fields as needed for modal details
 }
 
@@ -101,10 +103,13 @@ export default function TeamsPage() {
                                     sx={{ display: 'flex', alignItems: 'center', p: 2, cursor: 'pointer', transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 4 } }}
                                 >
                                     <Avatar sx={{ mr: 2, width: 48, height: 48 }}><GroupIcon sx={{ bgcolor: '#0288d1', color: '#fff' }} /></Avatar>
-                                    <Box>
+                                    <Box sx={{ flex: 1 }}>
                                         <Typography variant="h6">{team.name}</Typography>
                                         <Typography variant="body2" color="text.secondary">{team.description}</Typography>
                                     </Box>
+                                    {team.status === 'ready' && <Chip label="Ready" color="success" sx={{ ml: 2 }} />}
+                                    {team.status === 'scaffolded' && <Chip label="Scaffolded" color="warning" sx={{ ml: 2 }} />}
+                                    {team.status === 'empty' && <Chip label="Empty" color="default" sx={{ ml: 2 }} />}
                                 </Card>
                             </Link>
                         </Grid>

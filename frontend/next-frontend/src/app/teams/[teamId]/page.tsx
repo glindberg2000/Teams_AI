@@ -341,6 +341,9 @@ function SessionsTab({ teamId }: { teamId: string }) {
     const [payloadContent, setPayloadContent] = useState<string>('');
     const [payloadLoading, setPayloadLoading] = useState(false);
     const [payloadError, setPayloadError] = useState('');
+    const [containerStatus, setContainerStatus] = useState<string>('');
+    const [containerLoading, setContainerLoading] = useState(false);
+    const [containerError, setContainerError] = useState('');
 
     const fetchSessions = async () => {
         setLoading(true);
@@ -390,7 +393,10 @@ function SessionsTab({ teamId }: { teamId: string }) {
                 fetch(`/api/admin/sessions/${teamId}/${sessionId}/config`).then(r => r.json()),
                 fetch(`/api/admin/sessions/${teamId}/${sessionId}/health`).then(r => r.json()),
             ]);
-            setAdminData({ meta, fs, config, health, sessionId });
+            // Fetch container status and name
+            const containerRes = await fetch(`/api/team/${teamId}/session/${sessionId}/container-status`).then(r => r.json());
+            setAdminData({ meta, fs, config, health, sessionId, containerName: containerRes.container_name });
+            setContainerStatus(containerRes.status);
         } catch (e: any) {
             setAdminError('Failed to load session data');
         }
@@ -418,6 +424,36 @@ function SessionsTab({ teamId }: { teamId: string }) {
                 : null}
         </TreeItem>
     );
+    const fetchContainerStatus = async (sessionId: string) => {
+        setContainerLoading(true);
+        setContainerError('');
+        try {
+            const res = await fetch(`/api/team/${teamId}/session/${sessionId}/container-status`);
+            const data = await res.json();
+            setContainerStatus(data.status);
+        } catch (e: any) {
+            setContainerError('Failed to fetch container status');
+            setContainerStatus('error');
+        }
+        setContainerLoading(false);
+    };
+    const handleContainerAction = async (action: 'start' | 'stop' | 'remove') => {
+        if (!adminData.sessionId) return;
+        setContainerLoading(true);
+        setContainerError('');
+        try {
+            const res = await fetch(`/api/team/${teamId}/session/${adminData.sessionId}/${action}-container`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'error') {
+                setContainerError(data.error || 'Action failed');
+            } else {
+                setContainerStatus(action === 'remove' ? 'none' : (action === 'start' ? 'running' : 'stopped'));
+            }
+        } catch (e: any) {
+            setContainerError('Action failed');
+        }
+        setContainerLoading(false);
+    };
     if (loading) return <Box p={2}><Typography>Loading...</Typography></Box>;
     return <Box p={2}>
         <Box sx={{ mb: 2 }}>
@@ -442,8 +478,7 @@ function SessionsTab({ teamId }: { teamId: string }) {
                             <Chip label="Scaffolded" color="warning" size="small" sx={{ ml: 1 }} />
                         )}
                     </Box>
-                    <Button variant="outlined" size="small" onClick={() => setSelectedSession(s.name)}>Open Session</Button>
-                    <Button variant="contained" size="small" sx={{ ml: 1 }} onClick={() => openAdminModal(s.name)}>Details</Button>
+                    <Button variant="contained" size="small" onClick={() => openAdminModal(s.name)}>Details</Button>
                 </Card>
             ))}
         </Box>
@@ -458,6 +493,7 @@ function SessionsTab({ teamId }: { teamId: string }) {
                             <Tab label="Filesystem" />
                             <Tab label="Config" />
                             <Tab label="Health" />
+                            <Tab label="Container" />
                         </Tabs>
                         {adminTab === 0 && (
                             <Box>
@@ -516,6 +552,29 @@ function SessionsTab({ teamId }: { teamId: string }) {
                                 <Paper sx={{ p: 2, bgcolor: '#f5f5f5', fontFamily: 'monospace', fontSize: 14 }}>
                                     <pre style={{ margin: 0 }}>{JSON.stringify(adminData.health, null, 2)}</pre>
                                 </Paper>
+                            </Box>
+                        )}
+                        {adminTab === 4 && (
+                            <Box>
+                                <Typography variant="subtitle2">Container Name</Typography>
+                                <Typography sx={{ mb: 1, fontFamily: 'monospace' }}>
+                                    {adminData.containerName ? adminData.containerName : <span style={{ color: '#888' }}>(No container detected)</span>}
+                                </Typography>
+                                <Typography variant="subtitle2">Container Status</Typography>
+                                {containerLoading ? <CircularProgress size={20} /> : (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                        <Chip label={containerStatus} color={containerStatus === 'running' ? 'success' : containerStatus === 'stopped' ? 'warning' : 'default'} />
+                                        {containerError && <Typography color="error">{containerError}</Typography>}
+                                    </Box>
+                                )}
+                                <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                                    <Button variant="contained" color="success" disabled={containerStatus === 'running' || containerLoading || !adminData.containerName} onClick={() => handleContainerAction('start')}>Start</Button>
+                                    <Button variant="contained" color="warning" disabled={containerStatus !== 'running' || containerLoading || !adminData.containerName} onClick={() => handleContainerAction('stop')}>Stop</Button>
+                                    <Button variant="contained" color="error" disabled={containerStatus === 'none' || containerLoading || !adminData.containerName} onClick={() => handleContainerAction('remove')}>Remove</Button>
+                                    <Button variant="outlined" onClick={() => fetchContainerStatus(adminData.sessionId)} disabled={containerLoading}>Refresh</Button>
+                                </Box>
+                                {!adminData.containerName && <Typography variant="body2" color="text.secondary">No container detected for this session. Start the session in Dev Container or generate it to create a container.</Typography>}
+                                <Typography variant="body2" color="text.secondary">Use these controls to manage the Docker container for this session. Removing will delete the container (data may be lost).</Typography>
                             </Box>
                         )}
                     </>

@@ -33,9 +33,10 @@ from tools.scaffold_team import (
     generate_checklist,
     copy_cline_templates_and_rules,
 )
-from routes.team_files import router as team_files_router
-from routes.admin_sessions import router as admin_sessions_router
-from routes.chat import router as chat_router
+from backend.routes.team_files import router as team_files_router
+from backend.routes.admin_sessions import router as admin_sessions_router
+from backend.routes.chat import router as chat_router
+from backend.services import chat_service
 
 app = FastAPI()
 
@@ -55,6 +56,10 @@ app.include_router(admin_sessions_router)
 app.include_router(chat_router, prefix="/api/chat")
 
 CHAT_PORT = int(os.environ.get("TEAM_CHAT_PORT", 8787))
+
+# --- Chat Backend Selection Flag ---
+USE_PERSISTENT_CHAT = os.environ.get("USE_PERSISTENT_CHAT", "false").lower() == "true"
+# Set USE_PERSISTENT_CHAT=True in your environment to use the persistent DB chat backend.
 
 
 @app.get("/health")
@@ -804,6 +809,32 @@ def get_team_messages(
     - user: required, the user requesting messages
     - limit: max number of messages (default 20)
     """
+    if USE_PERSISTENT_CHAT:
+        # Use persistent DB backend
+        # Find the 'general' channel for this team (or first channel)
+        import asyncio
+
+        async def get_messages():
+            channels = await chat_service.list_channels(team_id)
+            if not channels:
+                return {"messages": []}
+            channel = next((c for c in channels if c.name == "general"), channels[0])
+            messages = await chat_service.list_messages(team_id, channel.id, limit)
+            return {
+                "messages": [
+                    {
+                        "id": m.id,
+                        "user": m.user,
+                        "message": m.message,
+                        "timestamp": m.timestamp.isoformat(),
+                        "channel": channel.name,
+                    }
+                    for m in messages
+                ]
+            }
+
+        return asyncio.run(get_messages())
+    # Legacy in-memory logic
     print(
         f"[DEBUG] GET /api/team/{team_id}/messages: method={request.method if request else 'GET'}, path={request.url if request else ''}, query={request.query_params if request else ''}"
     )
@@ -879,6 +910,34 @@ def filter_messages(team_id, filter: MessageFilter, since_message_id=None):
 def query_team_messages(
     team_id: str, filter: MessageFilter = Body(...), request: Request = None
 ):
+    if USE_PERSISTENT_CHAT:
+        import asyncio
+
+        async def query_messages():
+            channels = await chat_service.list_channels(team_id)
+            if not channels:
+                return {"messages": []}
+            # Use filter.channels if provided, else 'general'
+            channel_name = filter.channels[0] if filter.channels else "general"
+            channel = next((c for c in channels if c.name == channel_name), channels[0])
+            messages = await chat_service.list_messages(
+                team_id, channel.id, filter.limit or 20
+            )
+            return {
+                "messages": [
+                    {
+                        "id": m.id,
+                        "user": m.user,
+                        "message": m.message,
+                        "timestamp": m.timestamp.isoformat(),
+                        "channel": channel.name,
+                    }
+                    for m in messages
+                ]
+            }
+
+        return asyncio.run(query_messages())
+    # Legacy in-memory logic
     print(
         f"[DEBUG] POST /api/team/{team_id}/messages/query: method={request.method if request else 'POST'}, path={request.url if request else ''}, body={filter.dict() if filter else ''}"
     )

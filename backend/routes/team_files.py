@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import re
 import logging
+import json
 
 router = APIRouter()
 
@@ -279,3 +280,136 @@ async def generate_team_sessions(team: str, request: Request):
     except Exception as e:
         traceback.print_exc()
         return {"error": str(e)}, 500
+
+
+def detect_container_name(team, session):
+    session_path = TEAMS_ROOT / team / "sessions" / session
+    devcontainer_json = session_path / ".devcontainer" / "devcontainer.json"
+    container_name = None
+    # 1. Try to read name from devcontainer.json
+    if devcontainer_json.exists():
+        try:
+            with open(devcontainer_json) as f:
+                config = json.load(f)
+            if "name" in config and config["name"]:
+                container_name = config["name"]
+        except Exception:
+            pass
+    # 2. If not, search for containers with session name in their name
+    if not container_name:
+        try:
+            result = subprocess.run(
+                ["docker", "ps", "-a", "--format", "{{.Names}}|{{.CreatedAt}}"],
+                capture_output=True,
+                text=True,
+            )
+            lines = result.stdout.strip().split("\n")
+            matches = [l.split("|")[0] for l in lines if session in l.split("|")[0]]
+            if matches:
+                # If multiple, pick the most recently created
+                # Sort by CreatedAt descending
+                matches_with_time = [
+                    tuple(l.split("|")) for l in lines if session in l.split("|")[0]
+                ]
+                matches_with_time.sort(key=lambda x: x[1], reverse=True)
+                container_name = matches_with_time[0][0]
+        except Exception:
+            pass
+    return container_name
+
+
+@router.get("/api/team/{team}/session/{session}/container-status")
+def container_status(team: str, session: str):
+    import subprocess
+
+    name = detect_container_name(team, session)
+    if not name:
+        return {"status": "none", "container_name": None}
+    try:
+        result = subprocess.run(
+            [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                f"name=^{name}$",
+                "--format",
+                "{{.Status}}",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        status = result.stdout.strip()
+        if not status:
+            return {"status": "none", "container_name": name}
+        if status.startswith("Up"):
+            return {"status": "running", "container_name": name}
+        if status.startswith("Exited"):
+            return {"status": "stopped", "container_name": name}
+        return {"status": status, "container_name": name}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "container_name": name}
+
+
+@router.post("/api/team/{team}/session/{session}/start-container")
+def start_container(team: str, session: str):
+    import subprocess
+
+    name = detect_container_name(team, session)
+    if not name:
+        return {"status": "error", "error": "No container found for this session."}
+    try:
+        result = subprocess.run(
+            ["docker", "start", name], capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            return {"status": "started", "container_name": name}
+        return {
+            "status": "error",
+            "error": result.stderr.strip(),
+            "container_name": name,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e), "container_name": name}
+
+
+@router.post("/api/team/{team}/session/{session}/stop-container")
+def stop_container(team: str, session: str):
+    import subprocess
+
+    name = detect_container_name(team, session)
+    if not name:
+        return {"status": "error", "error": "No container found for this session."}
+    try:
+        result = subprocess.run(
+            ["docker", "stop", name], capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            return {"status": "stopped", "container_name": name}
+        return {
+            "status": "error",
+            "error": result.stderr.strip(),
+            "container_name": name,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e), "container_name": name}
+
+
+@router.post("/api/team/{team}/session/{session}/remove-container")
+def remove_container(team: str, session: str):
+    import subprocess
+
+    name = detect_container_name(team, session)
+    if not name:
+        return {"status": "error", "error": "No container found for this session."}
+    try:
+        result = subprocess.run(["docker", "rm", name], capture_output=True, text=True)
+        if result.returncode == 0:
+            return {"status": "removed", "container_name": name}
+        return {
+            "status": "error",
+            "error": result.stderr.strip(),
+            "container_name": name,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e), "container_name": name}
