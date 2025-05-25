@@ -27,7 +27,15 @@ from typing import Optional, Dict, List
 from fastapi.responses import JSONResponse, PlainTextResponse
 import logging
 from fastapi.encoders import jsonable_encoder
-from tools.scaffold_team import (
+
+# from tools.scaffold_team import (
+#     generate_env_file,
+#     generate_env_template,
+#     generate_checklist,
+#     copy_cline_templates_and_rules,
+# )
+# [UNIFICATION] Now importing from shared module for team/session/container generation
+from backend.services.team_scaffold_shared import (
     generate_env_file,
     generate_env_template,
     generate_checklist,
@@ -606,6 +614,11 @@ def instantiate_team(request: Request):
         with open(template_path) as f:
             template = json.load(f)
         print(f"[DEBUG] Loaded template: {template}")
+        # Normalize team name for directory and config/env usage
+        normalized_name = name.replace(" ", "_")
+        if name != normalized_name:
+            print(f"[WARN] Team name '{name}' contains spaces. Using '{normalized_name}' for directory and config.")
+        name = normalized_name
         # Create team dir
         team_dir = PROJECT_ROOT / "teams" / name
         if team_dir.exists():
@@ -617,6 +630,7 @@ def instantiate_team(request: Request):
         # Write config
         config = {
             "name": name,
+            "displayName": data.get("name", name),
             "description": description,
             "commType": comm_type,
             "roles": template.get("roles", []),
@@ -634,10 +648,11 @@ def instantiate_team(request: Request):
             print(
                 f"[DEBUG] Scaffolding with roles={roles}, prefix={prefix}, domain={domain}"
             )
-            generate_env_file(name, prefix, domain, roles, dry_run=False)
-            generate_env_template(name, roles, dry_run=False)
-            generate_checklist(name, roles, dry_run=False)
-            copy_cline_templates_and_rules(name, roles, dry_run=False)
+            config_dir = team_dir / "config"
+            generate_env_file(name, prefix, domain, roles, config_dir)
+            generate_env_template(name, roles, config_dir)
+            generate_checklist(name, roles, config_dir)
+            copy_cline_templates_and_rules(name, roles, team_dir)
         except Exception as e:
             import traceback
 

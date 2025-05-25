@@ -244,4 +244,74 @@ Expose the internal team chat server as an MCP tool for Cursor and agent integra
 - The internal_chat_mcp MCP tools (SendMessage, GetUnreadMessages, WaitForMessage) are now fully implemented and tested.
 - Successfully sent, received, and waited for messages in a real workflow with the backend chat system (team-9).
 - End-to-end agent workflow is confirmed working: announce availability, wait for task, receive, and respond.
-- Next: further automate or extend the workflow as needed. 
+- Next: further automate or extend the workflow as needed.
+
+# Task Master #26: Team/Session/Container Generation Flow Audit
+
+## Subtask 2: UI/Backend Team/Session/Container Generation Flow
+
+### 1. Team Scaffolding
+- Source: tools/scaffold_team.py (imported by backend and UI)
+- Output: teams/<team>/config/, config.json, sessions/ (empty or minimal)
+
+### 2. Session/Container Generation (UI Flow)
+- Frontend: frontend/next-frontend/src/app/teams/[teamId]/page.tsx
+  - fetchSessions: GET /api/team/${teamId}/sessions
+  - handleGenerate: POST /api/team/${teamId}/generate-sessions
+- Backend:
+  - GET /api/team/{team_id}/sessions
+  - POST /api/team/{team_id}/generate-sessions
+  - Session dirs: teams/<team>/sessions/<role>/
+- Naming: Robust to spaces/dashes/underscores
+- UI triggers, backend generates files
+
+### 3. Key Functions/Endpoints
+- scaffold_team.py (various)
+- fetchSessions, handleGenerate (frontend)
+- /api/team/{team_id}/generate-sessions, /sessions (backend)
+
+### 4. Sequence Diagram
+User (UI) -> POST /generate-sessions -> Backend -> creates/updates teams/<team>/sessions/<role>/
+Backend -> 200 OK -> UI
+UI -> GET /sessions -> Backend -> session list -> UI
+
+### 5. Notes
+- All logic robust to spaces/dashes/underscores
+- Backend is source of truth for session structure
+
+---
+
+## Subtask 3: CLI Team/Session/Container Generation Flow
+
+### 1. Team Scaffolding
+- Tool: tools/scaffold_team.py
+- Output: teams/<team>/config/, config.json, sessions/ (empty)
+
+### 2. Session/Container Generation
+- Tool: team-cli/team_cli.py
+- create-session: single session
+- create-crew: all roles from env file
+- Output: sessions/<team>/<role>/ (payload, devcontainer, etc.)
+- Naming: May diverge from UI/backend
+- Env/config parsing: May require manual fixes
+
+### 3. Flow Summary
+- Team Scaffold: tools/scaffold_team.py -> teams/<team>/
+- Session Generation: team-cli/team_cli.py -> sessions/<team>/<role>/
+
+### 4. Divergence Points
+- Session dir location: CLI uses sessions/<team>/<role>/, UI/backend uses teams/<team>/sessions/<role>/
+- Naming conventions: CLI may not handle spaces/case as robustly
+- Env/config parsing: CLI may require manual fixes
+- No direct import of backend logic: CLI and backend can drift out of sync
+
+### 5. Sequence Diagram
+User (CLI) -> [scaffold_team.py] -> teams/<team>/config/, config.json, sessions/
+User (CLI) -> [team_cli.py create-crew] -> sessions/<team>/<role>/
+
+---
+
+## Recommendations
+- Refactor CLI to use backend's session/container generation logic
+- Ensure session dirs are created in teams/<team>/sessions/<role>/
+- Use same env/config parsing and naming logic as backend 
