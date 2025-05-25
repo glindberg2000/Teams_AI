@@ -682,6 +682,24 @@ def main():
         team_id = normalize_team_id(project)
         print(f"\n[INFO] Normalized TEAM_ID for this team: {team_id}")
 
+        # Determine config.json path (write to team root, not config/)
+        team_root = PROJECT_ROOT / "teams" / project
+        config_json_path = team_root / "config.json"
+
+        # Build config.json content
+        config_json = {
+            "name": project,
+            "description": f"{project} team",
+            "commType": "internal",
+            "roles": roles if isinstance(roles, list) else roles.split(","),
+            "teamDocs": "My team docs go here",
+            "template": "Engineering Team",
+        }
+
+        # Write config.json
+        with open(config_json_path, "w") as f:
+            json.dump(config_json, f, indent=2)
+
     except Exception as e:
         print(f"Error creating files: {e}")
         sys.exit(1)

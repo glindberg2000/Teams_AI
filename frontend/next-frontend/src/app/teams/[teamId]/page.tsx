@@ -21,6 +21,7 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
+import ChannelSidebar, { Channel } from '../../components/ChannelSidebar';
 
 // Add a Team type for clarity
 interface Team {
@@ -615,49 +616,153 @@ function SessionsTab({ teamId }: { teamId: string }) {
     </Box>;
 }
 
-// --- ChatTab: Team Internal Chat (WebSocket MVP) ---
-function ChatTab({ teamId }: { teamId: string }) {
-    const [messages, setMessages] = useState<{ user: string, message: string }[]>([]);
+// --- ChatTab: Team Internal Chat (WebSocket MVP, now per-channel) ---
+function ChatTab({ teamId, channelId }: { teamId: string, channelId: string }) {
+    const [messages, setMessages] = useState<Array<{ user: string; message: string; channel?: string; timestamp?: string; type?: string }>>([]);
     const [input, setInput] = useState("");
     const ws = useRef<WebSocket | null>(null);
     const [connected, setConnected] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const hasOpened = useRef(false); // Track if ws was ever opened
+    const chatEndRef = useRef<HTMLDivElement>(null);
+    const [persistent, setPersistent] = useState<boolean | null>(null); // <-- NEW
     // Always use backend port 8000 for chat WebSocket
     const port = 8000;
+
+    // Fetch chat config on mount
     useEffect(() => {
-        if (typeof window === "undefined") return;
-        ws.current = new WebSocket(`ws://localhost:${port}/ws/${teamId}`);
-        ws.current.onopen = () => setConnected(true);
-        ws.current.onclose = () => setConnected(false);
+        fetch('/api/chat/config')
+            .then(r => r.ok ? r.json() : { persistent: false })
+            .then(cfg => setPersistent(!!cfg.persistent))
+            .catch(() => setPersistent(false));
+    }, []);
+
+    // Fetch message history on channel change, only if persistent
+    useEffect(() => {
+        if (persistent === null) return; // Wait for config
+        if (persistent) {
+            fetch(`/api/team/${teamId}/chat/${channelId}/messages`)
+                .then(r => r.ok ? r.json() : [])
+                .then((msgs) => {
+                    setMessages(Array.isArray(msgs) ? msgs : []);
+                });
+        } else {
+            setMessages([]); // In-memory: no history
+        }
+    }, [teamId, channelId, persistent]);
+
+    // WebSocket connection and real-time message handling
+    useEffect(() => {
+        if (typeof window === "undefined" || persistent === null) return;
+        setError(null);
+        ws.current?.close();
+        // --- KEY LOGIC: Use /ws/{teamId} in in-memory mode, /ws/{teamId}/{channelId} in persistent mode ---
+        const url = persistent
+            ? `ws://localhost:${port}/ws/${teamId}/${channelId}`
+            : `ws://localhost:${port}/ws/${teamId}`;
+        console.log("[WS] Creating new WebSocket:", url);
+        ws.current = new WebSocket(url);
+        ws.current.onopen = () => {
+            hasOpened.current = true;
+            setConnected(true);
+            console.log("[WS] open:", url);
+        };
+        ws.current.onclose = (event) => {
+            setConnected(false);
+            console.log("[WS] close:", event);
+            if (hasOpened.current && (event.code !== 1000 || event.reason)) {
+                setError("Could not connect to chat server. Is the backend running and supporting per-channel chat?");
+            }
+        };
+        ws.current.onerror = (event) => {
+            setConnected(false);
+            console.log("[WS] error:", event);
+            setError("Could not connect to chat server. Is the backend running and supporting per-channel chat?");
+        };
         ws.current.onmessage = (event) => {
             try {
-                const msg = JSON.parse(event.data);
-                setMessages((msgs) => [...msgs, msg]);
-            } catch { }
+                const data = JSON.parse(event.data);
+                // Only filter out system/ready messages
+                if (data.type === "ready") return;
+                // --- In-memory: ignore channel, just append ---
+                if (!persistent) {
+                    if (data.user && data.message) {
+                        setMessages((prev) => {
+                            // Prevent duplicate messages (by timestamp+user+message)
+                            const exists = prev.some(m => m.timestamp === data.timestamp && m.user === data.user && m.message === data.message);
+                            if (exists) return prev;
+                            return [...prev, data];
+                        });
+                        console.log("[WS] message (appended):", data);
+                    } else {
+                        console.log("[WS] message (ignored):", data);
+                    }
+                } else {
+                    // Persistent: require channel match
+                    if (data.user && data.message && data.channel === channelId) {
+                        setMessages((prev) => {
+                            const exists = prev.some(m => m.timestamp === data.timestamp && m.user === data.user && m.message === data.message && m.channel === data.channel);
+                            if (exists) return prev;
+                            return [...prev, data];
+                        });
+                        console.log("[WS] message (appended):", data);
+                    } else {
+                        console.log("[WS] message (ignored):", data);
+                    }
+                }
+            } catch (e) {
+                console.error("[WS] Failed to parse message:", event.data, e);
+            }
         };
-        return () => { ws.current && ws.current.close(); };
-    }, [teamId, port]);
+        return () => {
+            console.log("[WS] Cleaning up WebSocket");
+            ws.current?.close();
+            setConnected(false);
+        };
+    }, [teamId, channelId, persistent]);
 
+    // Auto-scroll to bottom when messages change
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    // --- KEY LOGIC: In-memory mode, do not send channel field ---
     const send = () => {
         if (ws.current && input.trim()) {
-            ws.current.send(JSON.stringify({ user: "You", message: input }));
+            const msg = { user: "You", message: input };
+            if (persistent) msg.channel = channelId; // Only add channel in persistent mode
+            ws.current.send(JSON.stringify(msg));
             setInput("");
         }
     };
 
+    if (persistent === null) {
+        return <Typography>Loading chat configuration...</Typography>;
+    }
+
     return (
-        <Box>
-            <Typography variant="h6" sx={{ mb: 1 }}>Team Chat</Typography>
-            <Box sx={{ minHeight: 200, maxHeight: 350, overflowY: 'auto', border: '1px solid #ccc', mb: 2, p: 2, borderRadius: 1, bgcolor: '#fafbfc' }}>
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+            {!connected && error && (
+                <Box sx={{ p: 2, color: "error.main" }}>
+                    <Typography color="error">
+                        Could not connect to chat server.<br />
+                        {error}<br />
+                        TODO: Ensure backend supports ws://localhost:8000/ws/{teamId}{persistent ? `/${channelId}` : ''}
+                    </Typography>
+                </Box>
+            )}
+            <Typography variant="h6" sx={{ mb: 1 }}>#{persistent ? channelId : 'team'} Chat</Typography>
+            <Box sx={{ flex: 1, minHeight: 200, maxHeight: 350, overflowY: 'auto', border: '1px solid #ccc', mb: 2, p: 2, borderRadius: 1, bgcolor: '#fafbfc' }}>
                 {messages.length === 0 ? <Typography color="text.secondary">No messages yet.</Typography> :
                     messages.map((msg, i) => (
                         <Box key={i} sx={{ mb: 1 }}><b>{msg.user}:</b> {msg.message}</Box>
                     ))}
+                <div ref={chatEndRef} />
             </Box>
             <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} fullWidth size="small" placeholder="Type a message..." />
                 <Button variant="contained" onClick={send} disabled={!connected || !input.trim()}>Send</Button>
             </Box>
-            {!connected && <Typography color="error" sx={{ mt: 1 }}>Not connected to chat server.</Typography>}
         </Box>
     );
 }
@@ -682,6 +787,45 @@ export default function TeamDetailsPage() {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const [tab, setTab] = useState(0);
+    // Channel sidebar state
+    const [channels, setChannels] = useState<Channel[]>([
+        { id: 'general', name: 'general' },
+        { id: 'random', name: 'random' },
+        { id: 'private', name: 'private', isPrivate: true },
+    ]);
+    const [selectedChannelId, setSelectedChannelId] = useState('general');
+    const [persistent, setPersistent] = useState<boolean | null>(null); // <-- NEW
+    // Channel CRUD handlers
+    const handleAddChannel = (name: string) => {
+        const id = name.toLowerCase().replace(/\s+/g, '-');
+        setChannels(chs => [...chs, { id, name }]);
+        setSelectedChannelId(id);
+    };
+    const handleRenameChannel = (id: string, name: string) => {
+        setChannels(chs => chs.map(ch => ch.id === id ? { ...ch, name } : ch));
+    };
+    const handleDeleteChannel = (id: string) => {
+        setChannels(chs => chs.filter(ch => ch.id !== id));
+        if (selectedChannelId === id && channels.length > 1) {
+            setSelectedChannelId(channels[0].id);
+        }
+    };
+
+    // Fetch persistent config on mount
+    useEffect(() => {
+        fetch('/api/chat/config')
+            .then(r => r.ok ? r.json() : { persistent: false })
+            .then(cfg => setPersistent(!!cfg.persistent))
+            .catch(() => setPersistent(false));
+    }, []);
+
+    // Restrict channels to 'general' in in-memory mode
+    useEffect(() => {
+        if (persistent === false) {
+            setChannels([{ id: 'general', name: 'general' }]);
+            setSelectedChannelId('general');
+        }
+    }, [persistent]);
 
     useEffect(() => {
         fetch(`/api/team/${teamId}`)
@@ -734,11 +878,11 @@ export default function TeamDetailsPage() {
         }
     };
 
-    if (loading) return <Box sx={{ p: 4 }}><Typography>Loading...</Typography></Box>;
+    if (loading || persistent === null) return <Box sx={{ p: 4 }}><Typography>Loading...</Typography></Box>;
     if (!team || (team as any).error) return <Box sx={{ p: 4 }}><Typography color="error">Team not found.</Typography></Box>;
 
     return (
-        <Box>
+        <Box sx={{ p: 0 }}>
             <Typography variant="h4" sx={{ mb: 2 }}>{team?.name}</Typography>
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
                 <Tab label="Overview" />
@@ -749,8 +893,26 @@ export default function TeamDetailsPage() {
                 <Tab label="Checklist" />
                 <Tab label="Environment" />
             </Tabs>
+            {/* Only show sidebar+chat when in Chat tab */}
+            {tab === 1 && (
+                <Box sx={{ display: 'flex', height: '70vh', minHeight: 400, bgcolor: 'background.default', borderRadius: 2, boxShadow: 1 }}>
+                    <ChannelSidebar
+                        teamId={teamId}
+                        channels={channels}
+                        selectedChannelId={selectedChannelId}
+                        onSelect={setSelectedChannelId}
+                        onAdd={persistent ? handleAddChannel : undefined}
+                        onRename={persistent ? handleRenameChannel : undefined}
+                        onDelete={persistent ? handleDeleteChannel : undefined}
+                    />
+                    <Box sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
+                        <ChatTab teamId={teamChatId} channelId={selectedChannelId} />
+                        {persistent === false && <Typography color="warning.main" sx={{ mt: 2 }}>In-memory chat: Only the #general channel is available. Channel features require persistent mode.</Typography>}
+                    </Box>
+                </Box>
+            )}
+            {/* Other tabs remain full width */}
             {tab === 0 && team && <OverviewTab team={team} onEdit={handleEdit} onDelete={() => setDeleteOpen(true)} onRolesChange={(roles) => setTeam({ ...team, roles })} />}
-            {tab === 1 && teamChatId && <ChatTab teamId={teamChatId} />}
             {tab === 2 && teamId && <SessionsTab teamId={teamId} />}
             {tab === 3 && teamId && <Typography sx={{ p: 2 }}>Tasks coming soon.</Typography>}
             {tab === 4 && teamId && <SharedDocsTab teamId={teamId} />}
