@@ -56,6 +56,26 @@ import yaml
 import json
 from typing import Dict, Any
 
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# from tools.scaffold_team import (
+#     generate_env_file,
+#     generate_env_template,
+#     generate_checklist,
+#     copy_cline_templates_and_rules,
+#     normalize_team_name,
+# )
+# [UNIFICATION] Import shared team scaffolding logic from backend.services.team_scaffold_shared
+from backend.services.team_scaffold_shared import (
+    generate_env_file,
+    generate_env_template,
+    generate_checklist,
+    copy_cline_templates_and_rules,
+    normalize_team_name,
+)
+
 SESSIONS_DIR = Path("sessions")
 ROLES_DIR = Path("roles")
 TEAM_CONFIG = Path("team/crew.yaml")
@@ -815,84 +835,37 @@ def scaffold_team(args):
         sys.exit(1)
     with open(template_path) as f:
         template = json.load(f)
-    team_name = args.name or template.get("name", "New_Team").replace(" ", "_")
+    # Normalize team name for directory and config/env usage
+    team_name_raw = args.name or template.get("name", "New_Team")
+    team_name = team_name_raw.replace(" ", "_")
+    if team_name_raw != team_name:
+        print(
+            f"[WARN] Team name '{team_name_raw}' contains spaces. Using '{team_name}' for directory and config."
+        )
     team_dir = Path("teams") / team_name
     if team_dir.exists():
         print(f"Error: Team directory already exists: {team_dir}")
         sys.exit(1)
     team_dir.mkdir(parents=True)
     config_path = team_dir / "config.json"
+    # Store original name as displayName
+    template["name"] = team_name
+    template["displayName"] = team_name_raw
     with open(config_path, "w") as f:
         json.dump(template, f, indent=2)
     print(f"Created team directory and config: {config_path}")
-
-    # Generate .env.team with placeholder keys for each role
-    env_lines = []
-    for role in template.get("roles", []):
-        role_env = role.upper()
-        env_lines.append(f"{role_env}_EMAIL=")
-        env_lines.append(f"{role_env}_SLACK_TOKEN=")
-        env_lines.append(f"{role_env}_GITHUB_TOKEN=")
-    env_path = team_dir / ".env.team"
-    with open(env_path, "w") as f:
-        f.write("\n".join(env_lines) + "\n")
-    print(f"Generated .env.team with placeholder keys: {env_path}")
-
-    # --- Create config/ directory and required files for UI/backend compatibility ---
+    # --- [UNIFICATION] Use shared logic for env, template, checklist, and cline docs/rules ---
     config_dir = team_dir / "config"
-    config_dir.mkdir(exist_ok=True)
-    # checklist.md
-    checklist_path = config_dir / "checklist.md"
-    with open(checklist_path, "w") as f:
-        f.write("# Team Checklist\n\n- [ ] Add your team onboarding checklist here.\n")
-    # env.template (copy from .env.team)
-    env_template_path = config_dir / "env.template"
-    with open(env_template_path, "w") as f:
-        f.write("\n".join(env_lines) + "\n")
-    # env (empty for user to fill in)
-    env_file_path = config_dir / "env"
-    with open(env_file_path, "w") as f:
-        f.write("")
+    roles = template.get("roles", [])
+    prefix = "user"
+    domain = "example.com"
+    generate_env_file(team_name, prefix, domain, roles, config_dir)
+    generate_env_template(team_name, roles, config_dir)
+    generate_checklist(team_name, roles, config_dir)
+    copy_cline_templates_and_rules(team_name, roles, team_dir)
     print(f"Created config/ directory and required files: {config_dir}")
-
-    # Create sessions/<team_name>/ and call create_session for each role
-    sessions_dir = Path("sessions") / team_name
-    sessions_dir.mkdir(parents=True, exist_ok=True)
-    for role in template.get("roles", []):
-        print(f"Scaffolding session for role: {role}")
-        session_args = argparse.Namespace(
-            name=role,
-            role=role,
-            project=team_name,
-            ssh_key=None,
-            generate_ssh_key=True,
-            prompt_all=False,
-            all_env=[
-                f"GIT_USER_NAME={role}",
-                f"GIT_USER_EMAIL=",
-                f"SLACK_BOT_TOKEN=",
-                f"GITHUB_PERSONAL_ACCESS_TOKEN=",
-                f"SLACK_TEAM_ID=",
-                f"ANTHROPIC_API_KEY=",
-                f"PERPLEXITY_API_KEY=",
-                "MODEL=claude-3-sonnet-20240229",
-                "PERPLEXITY_MODEL=sonar-medium-online",
-                "MAX_TOKENS=64000",
-                "TEMPERATURE=0.2",
-                "DEBUG=false",
-                "LOG_LEVEL=info",
-                "DEFAULT_SUBTASKS=5",
-                "DEFAULT_PRIORITY=medium",
-            ],
-            include_global_docs=True,
-            include_role_docs=True,
-        )
-        try:
-            create_session(session_args)
-        except Exception as e:
-            print(f"Error creating session for role {role}: {e}")
     print(
-        f"\nTeam scaffold complete! Edit {env_path} and {env_file_path} to fill in required values before use."
+        f"\nTeam scaffold complete! Edit {config_dir/'env'} and {config_dir/'env.template'} to fill in required values before use."
     )
 
 
