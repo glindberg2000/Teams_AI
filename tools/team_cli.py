@@ -337,7 +337,7 @@ def create_session(args):
         "DEFAULT_SUBTASKS": "5",
         "DEFAULT_PRIORITY": "medium",
         "DEBUG": "false",
-        "LOG_LEVEL": "info",
+        "LOG_LEVEL": "INFO",
     }
 
     # Map only the current role's fields to standard names
