@@ -545,21 +545,10 @@ def create_session(args):
                         "LOG_LEVEL": env_vars.get("LOG_LEVEL", ""),
                     },
                 },
-                "internal_chat": {
-                    "command": "npx",
-                    "args": ["-y", "@modelcontextprotocol/server-internal-chat"],
+                "internal-chat": {
+                    "command": "/workspaces/project/.venv/bin/internal-chat-mcp",
+                    "args": ["--mode", "stdio"],
                     "env": {
-                        "INTERNAL_CHAT_REPO_URL": env_vars.get(
-                            "INTERNAL_CHAT_REPO_URL",
-                            env_vars.get(
-                                "MCP_DISCORD_REPO_URL",
-                                "https://github.com/your-org/mcp-discord.git",
-                            ),
-                        ),
-                        "INTERNAL_CHAT_REPO_BRANCH": env_vars.get(
-                            "INTERNAL_CHAT_REPO_BRANCH",
-                            env_vars.get("MCP_DISCORD_REPO_BRANCH", "main"),
-                        ),
                         "INTERNAL_CHAT_TEAM_ID": internal_chat_team_id,
                         "INTERNAL_CHAT_USER": internal_chat_user,
                     },

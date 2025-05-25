@@ -404,11 +404,6 @@ def create_session(args):
         # Generate default MCP config
         mcp_config = {
             "mcpServers": {
-                "puppeteer": {
-                    "command": "npx",
-                    "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
-                    "env": {},
-                },
                 "github": {
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-github"],
@@ -444,6 +439,14 @@ def create_session(args):
                         "DEFAULT_PRIORITY": env_vars.get("DEFAULT_PRIORITY", ""),
                         "DEBUG": env_vars.get("DEBUG", ""),
                         "LOG_LEVEL": env_vars.get("LOG_LEVEL", ""),
+                    },
+                },
+                "internal-chat": {
+                    "command": "/workspaces/project/.venv/bin/internal-chat-mcp",
+                    "args": ["--mode", "stdio"],
+                    "env": {
+                        "INTERNAL_CHAT_TEAM_ID": env_vars.get("TEAM_NAME", ""),
+                        "INTERNAL_CHAT_USER": name if "name" in locals() else "",
                     },
                 },
             }
