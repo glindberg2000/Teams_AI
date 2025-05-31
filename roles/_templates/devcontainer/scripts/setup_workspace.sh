@@ -76,6 +76,9 @@ cp /workspaces/project/.devcontainer/scripts/cursor_user_rule.txt /workspaces/pr
 mkdir -p /workspaces/project/payload/.cursor/rules
 cp /workspaces/project/.devcontainer/scripts/.cursor/rules/memory_bank.mdc /workspaces/project/payload/.cursor/rules/memory_bank.mdc
 
+# Copy shared docs communication protocol rule into session payload
+cp /workspaces/project/.devcontainer/scripts/.windsurf/rules/08-shared-docs-communication.md /workspaces/project/payload/.windsurf/rules/08-shared-docs-communication.md
+
 # --- ENVIRONMENT SETUP ---
 # 1. Ensure .venv exists (use uv if available, fallback to python)
 if [ ! -d "/workspaces/project/.venv" ]; then
@@ -159,6 +162,23 @@ else
       log "WARNING: Failed to clone main project repo from $PROJECT_REPO_URL, continuing..."
     fi
   fi
+fi
+
+# --- Regenerate payload/mcp_config.json from template and .env ---
+if [ -f "/workspaces/project/mcp_config.template.json" ] && [ -f "/workspaces/project/.env" ]; then
+    echo "Generating payload/mcp_config.json from template and .env..."
+    # Export all env vars from .env
+    set -a
+    source /workspaces/project/.env
+    set +a
+    # Use envsubst to substitute variables (requires envsubst installed)
+    envsubst < /workspaces/project/mcp_config.template.json > /workspaces/project/payload/mcp_config.json
+    echo "Generated payload/mcp_config.json"
+fi
+
+# Ensure LOG_LEVEL is exported as INFO (uppercase) if present in .env
+if grep -q '^LOG_LEVEL=' /workspaces/project/.env; then
+    sed -i '' 's/^LOG_LEVEL=.*/LOG_LEVEL=INFO/' /workspaces/project/.env
 fi
 
 # --- CRITICAL FILE VERIFICATION ---

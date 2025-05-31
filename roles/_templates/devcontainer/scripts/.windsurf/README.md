@@ -1,0 +1,2 @@
+## Shared Docs Communication Protocol
+- See `rules/08-shared-docs-communication.md` for the canonical workflow for sharing and syncing documentation using git-based workflows. This rule is always copied into session payloads for reference. 

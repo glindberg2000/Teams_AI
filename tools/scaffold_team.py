@@ -205,7 +205,7 @@ def generate_env_file(project, prefix, domain, roles, dry_run=False):
         "DEFAULT_SUBTASKS=5",
         "DEFAULT_PRIORITY=medium",
         "DEBUG=false",
-        "LOG_LEVEL=info",
+        "LOG_LEVEL=INFO",
         "",
         "# Docker Configuration",
         "DOCKER_GROUP=1000  # Default group ID for Docker",

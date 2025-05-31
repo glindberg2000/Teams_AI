@@ -37,3 +37,6 @@ Required files:
 2. Update `activeContext.md` and `progress.md` after significant changes.
 3. Use GitHub MCP for PRs, branching, and commits.
 4. Communicate updates via Discord to the role-specific channel.
+
+## Related Rules
+- See `08-shared-docs-communication.md` for the canonical protocol on sharing and syncing documentation using git-based workflows.

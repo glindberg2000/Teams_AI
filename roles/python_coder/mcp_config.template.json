@@ -1,13 +1,5 @@
 {
   "mcpServers": {
-    "puppeteer": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-puppeteer"
-      ],
-      "env": {}
-    },
     "github": {
       "command": "npx",
       "args": [
@@ -46,11 +38,7 @@
       "command": "/workspaces/project/.venv/bin/internal-chat-mcp",
       "args": [
         "--mode",
-        "sse",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8000"
+        "stdio"
       ],
       "env": {
         "INTERNAL_CHAT_TEAM_ID": "${INTERNAL_CHAT_TEAM_ID}",
