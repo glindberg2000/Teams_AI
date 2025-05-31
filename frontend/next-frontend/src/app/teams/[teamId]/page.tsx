@@ -628,6 +628,8 @@ function ChatTab({ teamId, channelId }: { teamId: string, channelId: string }) {
     const [persistent, setPersistent] = useState<boolean | null>(null); // <-- NEW
     // Always use backend port 8000 for chat WebSocket
     const port = 8000;
+    // Get user from localStorage or default to 'You'
+    const chatUser = typeof window !== "undefined" ? (window.localStorage.getItem("chatUser") || "You") : "You";
 
     // Fetch chat config on mount
     useEffect(() => {
@@ -637,15 +639,28 @@ function ChatTab({ teamId, channelId }: { teamId: string, channelId: string }) {
             .catch(() => setPersistent(false));
     }, []);
 
-    // Fetch message history on channel change, only if persistent
-    useEffect(() => {
-        if (persistent === null) return; // Wait for config
+    // Fetch message history on channel change
+    const fetchMessages = () => {
         if (persistent) {
+            // Persistent mode: use channel endpoint
             fetch(`/api/team/${teamId}/chat/${channelId}/messages`)
                 .then(r => r.ok ? r.json() : [])
                 .then((msgs) => {
                     setMessages(Array.isArray(msgs) ? msgs : []);
                 });
+        } else {
+            // In-memory mode: use flat team messages endpoint, no user filter
+            fetch(`/api/team/${teamId}/messages?limit=50`)
+                .then(r => r.ok ? r.json() : { messages: [] })
+                .then((data) => {
+                    setMessages(Array.isArray(data.messages) ? data.messages : []);
+                });
+        }
+    };
+    useEffect(() => {
+        if (persistent === null) return; // Wait for config
+        if (persistent) {
+            fetchMessages();
         } else {
             setMessages([]); // In-memory: no history
         }
@@ -665,6 +680,7 @@ function ChatTab({ teamId, channelId }: { teamId: string, channelId: string }) {
         ws.current.onopen = () => {
             hasOpened.current = true;
             setConnected(true);
+            fetchMessages(); // <-- Fetch on connect
             console.log("[WS] open:", url);
         };
         ws.current.onclose = (event) => {
@@ -729,7 +745,7 @@ function ChatTab({ teamId, channelId }: { teamId: string, channelId: string }) {
     // --- KEY LOGIC: In-memory mode, do not send channel field ---
     const send = () => {
         if (ws.current && input.trim()) {
-            const msg = { user: "You", message: input };
+            const msg = { user: chatUser, message: input };
             if (persistent) msg.channel = channelId; // Only add channel in persistent mode
             ws.current.send(JSON.stringify(msg));
             setInput("");
@@ -742,6 +758,19 @@ function ChatTab({ teamId, channelId }: { teamId: string, channelId: string }) {
 
     return (
         <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+            {/* Status/context bar */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, p: 1, bgcolor: '#f0f4fa', borderRadius: 1 }}>
+                <Typography sx={{ mr: 2 }}>
+                    <span style={{ color: connected ? 'green' : 'red' }}>
+                        ●
+                    </span> {connected ? 'Connected' : 'Disconnected'}
+                </Typography>
+                <Typography sx={{ mr: 2 }}>Team: {teamId}</Typography>
+                <Typography sx={{ mr: 2 }}>Channel: {channelId}</Typography>
+                <Typography sx={{ mr: 2 }}>User: {chatUser}</Typography>
+                <Typography sx={{ mr: 2 }}>Backend: localhost:8000</Typography>
+                <Button size="small" onClick={fetchMessages}>Refresh</Button>
+            </Box>
             {!connected && error && (
                 <Box sx={{ p: 2, color: "error.main" }}>
                     <Typography color="error">
@@ -779,7 +808,7 @@ export default function TeamDetailsPage() {
     const router = useRouter();
     const params = useParams();
     // Ensure teamId is always a string
-    const teamId = typeof params.teamId === 'string' ? params.teamId : Array.isArray(params.teamId) ? params.teamId[0] : '';
+    const urlTeamId = typeof params.teamId === 'string' ? params.teamId : Array.isArray(params.teamId) ? params.teamId[0] : '';
     const [team, setTeam] = useState<Team | null>(null);
     const [loading, setLoading] = useState(true);
     const [editOpen, setEditOpen] = useState(false);
@@ -827,17 +856,15 @@ export default function TeamDetailsPage() {
         }
     }, [persistent]);
 
+    // Always fetch team info using the URL param, but use the backend's team.id for all chat
     useEffect(() => {
-        fetch(`/api/team/${teamId}`)
+        fetch(`/api/team/${urlTeamId}`)
             .then(res => res.json())
             .then(data => { setTeam(data); setLoading(false); });
-    }, [teamId]);
+    }, [urlTeamId]);
 
-    // Use TEAM_ID from backend if available, else normalize team.name
-    function normalizeTeamId(name: string) {
-        return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
-    }
-    const teamChatId = team?.TEAM_ID || (team?.name ? normalizeTeamId(team.name) : '');
+    // Use the backend's canonical team id (team.id) for all chat and message calls
+    const canonicalTeamId = team?.id || team?.name || urlTeamId;
 
     const handleEdit = () => {
         if (!team) return;
@@ -852,7 +879,7 @@ export default function TeamDetailsPage() {
     const handleSave = async () => {
         if (!team) return;
         try {
-            const res = await fetch(`/api/team/${teamId}`, {
+            const res = await fetch(`/api/team/${urlTeamId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...team, ...editForm }),
@@ -868,7 +895,7 @@ export default function TeamDetailsPage() {
 
     const handleDelete = async () => {
         try {
-            const res = await fetch(`/api/team/${teamId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/team/${urlTeamId}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete team');
             setSnackbar({ open: true, message: 'Team deleted', severity: 'success' });
             setDeleteOpen(false);
@@ -897,7 +924,7 @@ export default function TeamDetailsPage() {
             {tab === 1 && (
                 <Box sx={{ display: 'flex', height: '70vh', minHeight: 400, bgcolor: 'background.default', borderRadius: 2, boxShadow: 1 }}>
                     <ChannelSidebar
-                        teamId={teamId}
+                        teamId={canonicalTeamId}
                         channels={channels}
                         selectedChannelId={selectedChannelId}
                         onSelect={setSelectedChannelId}
@@ -906,7 +933,7 @@ export default function TeamDetailsPage() {
                         onDelete={persistent ? handleDeleteChannel : undefined}
                     />
                     <Box sx={{ flex: 1, p: 3, display: 'flex', flexDirection: 'column' }}>
-                        <ChatTab teamId={teamChatId} channelId={selectedChannelId} />
+                        <ChatTab teamId={canonicalTeamId} channelId={selectedChannelId} />
                         {persistent === false && <Typography color="warning.main" sx={{ mt: 2 }}>In-memory chat: Only the #general channel is available. Channel features require persistent mode.</Typography>}
                     </Box>
                 </Box>
