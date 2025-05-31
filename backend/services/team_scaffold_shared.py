@@ -395,3 +395,25 @@ def copy_cline_templates_and_rules(
         if windsurf_rules_dst.exists():
             shutil.rmtree(windsurf_rules_dst)
         shutil.copytree(windsurf_rules_src, windsurf_rules_dst)
+
+
+def sync_cline_docs_shared_to_sessions(team_root: Path) -> None:
+    """
+    Sync all files from team_root/cline_docs_shared/ to each session's payload/cline_docs_shared/.
+    Overwrites existing files as needed.
+    """
+    shared_dir = team_root / "cline_docs_shared"
+    sessions_dir = team_root / "sessions"
+    if not shared_dir.exists() or not sessions_dir.exists():
+        return
+    for session in sessions_dir.iterdir():
+        payload_dir = session / "payload" / "cline_docs_shared"
+        if not payload_dir.exists():
+            payload_dir.mkdir(parents=True, exist_ok=True)
+        # Remove all existing files in payload_dir
+        for f in payload_dir.glob("*.md"):
+            f.unlink()
+        # Copy all shared docs
+        for f in shared_dir.glob("*.md"):
+            target = payload_dir / f.name
+            target.write_text(f.read_text())

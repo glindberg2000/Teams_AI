@@ -16,6 +16,7 @@ import tempfile
 import re
 import logging
 import json
+from backend.services.team_scaffold_shared import sync_cline_docs_shared_to_sessions
 
 router = APIRouter()
 
@@ -84,27 +85,17 @@ def get_cline_doc(team: str, filename: str):
     return file_path.read_text()
 
 
-@router.put("/api/team/{team}/cline_docs_shared/{filename}")
-def update_cline_doc(team: str, filename: str, content: str):
-    file_path = TEAMS_ROOT / team / "cline_docs_shared" / filename
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_path.write_text(content)
-    return {"status": "ok"}
-
-
-@router.get("/api/global-docs")
-def list_global_docs():
-    if not GLOBAL_DOCS_ROOT.exists():
-        return []
-    return [f.name for f in GLOBAL_DOCS_ROOT.glob("*.md") if f.is_file()]
-
-
-@router.get("/api/global-docs/{filename}", response_class=PlainTextResponse)
-def get_global_doc(filename: str):
-    file_path = GLOBAL_DOCS_ROOT / filename
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="file not found")
-    return file_path.read_text()
+@router.post("/api/team/{team}/cline_docs_shared/propagate")
+def propagate_cline_docs_shared(team: str, body: dict = Body(default=None)):
+    print(f"[DEBUG] propagate_cline_docs_shared called for team: {team}")
+    team_root = TEAMS_ROOT / team
+    if not team_root.exists():
+        raise HTTPException(status_code=404, detail="Team not found")
+    sync_cline_docs_shared_to_sessions(team_root)
+    # List updated sessions
+    sessions_dir = team_root / "sessions"
+    updated_sessions = [s.name for s in sessions_dir.iterdir() if s.is_dir()]
+    return {"status": "propagated", "sessions": updated_sessions}
 
 
 @router.post("/api/team/{team}/cline_docs_shared/{filename}")

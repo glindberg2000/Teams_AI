@@ -20,6 +20,11 @@
   - Remove any global npx v10+ binary to prevent version drift
 - Updated `templates/devcontainer/scripts/mcp_config.template.json` to use the `npx -p ... -c ...` pattern for all MCP servers, ensuring compatibility with npx 9+ and preventing argument parsing bugs.
 - All role-level mcp_config.template.json files have been updated to match the master template, ensuring correct Discord and Taskmaster MCP config for all session generations.
+- Implemented a backend endpoint `/api/team/{team}/cline_docs_shared/propagate` to sync all shared docs to all session containers.
+- Fixed a route conflict by moving the propagate endpoint above the `{filename}` endpoint in `team_files.py`.
+- Updated the frontend so the "Propagate" button in Shared Docs calls this endpoint and shows a success/failure message.
+- Users can now sync docs instantly via the UI or by calling the API (no git or mounts needed in containers).
+- Tested and confirmed: propagation works, and all sessions receive the latest docs.
 
 ## Next Steps
 - Analyze current MCP config and local repo path handling for `mcp-discord`.
@@ -30,6 +35,8 @@
 - Rebuild containers for all teams/sessions to ensure the new Dockerfile and MCP config are in effect.
 - Finalize the Team section design: either add Team Templates or streamline the team scaffolding/generation process in the Teams UI.
 - Implement the chosen approach for Teams.
+- Monitor for user feedback on the new workflow.
+- Optionally, enhance with propagate-on-save or more granular sync options if needed.
 
 ## Current State
 - Discord MCP integration is fully operational using the [mcp-discord](https://github.com/netixc/mcp-discord) bridge.
@@ -314,4 +321,7 @@ User (CLI) -> [team_cli.py create-crew] -> sessions/<team>/<role>/
 ## Recommendations
 - Refactor CLI to use backend's session/container generation logic
 - Ensure session dirs are created in teams/<team>/sessions/<role>/
-- Use same env/config parsing and naming logic as backend 
+- Use same env/config parsing and naming logic as backend
+
+## Status
+- Shared docs sync/propagate system is live and working as intended. 
