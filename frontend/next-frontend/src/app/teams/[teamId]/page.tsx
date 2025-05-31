@@ -215,8 +215,19 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
         if (selected === filename) setSelected('');
         refreshFiles();
     };
-    const propagateDoc = (filename: string) => {
-        alert(`Propagate ${filename} to sessions (stub)`);
+    const propagateDoc = async (filename: string) => {
+        try {
+            const res = await fetch(`/api/team/${teamId}/cline_docs_shared/propagate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            if (!res.ok) throw new Error('Failed to propagate');
+            const data = await res.json();
+            setSnackbar({ open: true, message: `Propagated to sessions: ${data.sessions.join(', ')}`, severity: 'success' });
+        } catch (e) {
+            setSnackbar({ open: true, message: 'Failed to propagate to sessions', severity: 'error' });
+        }
     };
     const handleImport = async (filename: string) => {
         try {
@@ -940,11 +951,11 @@ export default function TeamDetailsPage() {
             )}
             {/* Other tabs remain full width */}
             {tab === 0 && team && <OverviewTab team={team} onEdit={handleEdit} onDelete={() => setDeleteOpen(true)} onRolesChange={(roles) => setTeam({ ...team, roles })} />}
-            {tab === 2 && teamId && <SessionsTab teamId={teamId} />}
-            {tab === 3 && teamId && <Typography sx={{ p: 2 }}>Tasks coming soon.</Typography>}
-            {tab === 4 && teamId && <SharedDocsTab teamId={teamId} />}
-            {tab === 5 && teamId && <ChecklistTab teamId={teamId} />}
-            {tab === 6 && teamId && <EnvironmentTab teamId={teamId} />}
+            {tab === 2 && canonicalTeamId && <SessionsTab teamId={canonicalTeamId} />}
+            {tab === 3 && canonicalTeamId && <Typography sx={{ p: 2 }}>Tasks coming soon.</Typography>}
+            {tab === 4 && canonicalTeamId && <SharedDocsTab teamId={canonicalTeamId} />}
+            {tab === 5 && canonicalTeamId && <ChecklistTab teamId={canonicalTeamId} />}
+            {tab === 6 && canonicalTeamId && <EnvironmentTab teamId={canonicalTeamId} />}
             <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Edit Team</DialogTitle>
                 <DialogContent>
