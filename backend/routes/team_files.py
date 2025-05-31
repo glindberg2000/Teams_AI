@@ -36,10 +36,26 @@ def get_env_file(team: str):
 
 
 @router.put("/api/team/{team}/config/env")
-def update_env_file(team: str, content: str):
+async def update_env_file(team: str, request: Request):
     env_path = TEAMS_ROOT / team / "config" / "env"
     env_path.parent.mkdir(parents=True, exist_ok=True)
-    env_path.write_text(content)
+    try:
+        # Try to parse as JSON with 'content' field
+        data = await request.json()
+        content = data.get("content", None)
+        if content is not None:
+            env_path.write_text(content)
+            return {"status": "ok"}
+    except Exception:
+        pass  # Not JSON, fall through to raw body
+    # Fallback: treat as raw text
+    body = await request.body()
+    # Try to decode as utf-8, fallback to bytes if not possible
+    try:
+        text = body.decode("utf-8")
+        env_path.write_text(text)
+    except Exception:
+        env_path.write_bytes(body)
     return {"status": "ok"}
 
 
@@ -85,6 +101,22 @@ def get_cline_doc(team: str, filename: str):
     return file_path.read_text()
 
 
+def parse_extra_propagate_paths(env_path):
+    if not env_path.exists():
+        return []
+    paths = []
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("EXTRA_PROPAGATE_PATHS="):
+            value = line.split("=", 1)[1].strip()
+            if value:
+                paths = [p.strip() for p in value.split(",") if p.strip()]
+            break
+    return paths
+
+
 @router.post("/api/team/{team}/cline_docs_shared/propagate")
 def propagate_cline_docs_shared(team: str, body: dict = Body(default=None)):
     print(f"[DEBUG] propagate_cline_docs_shared called for team: {team}")
@@ -92,10 +124,29 @@ def propagate_cline_docs_shared(team: str, body: dict = Body(default=None)):
     if not team_root.exists():
         raise HTTPException(status_code=404, detail="Team not found")
     sync_cline_docs_shared_to_sessions(team_root)
+    # Propagate to extra host paths if set
+    env_path = team_root / "config" / "env"
+    extra_paths = parse_extra_propagate_paths(env_path)
+    print(f"[DEBUG] EXTRA_PROPAGATE_PATHS: {extra_paths}")
+    shared_dir = team_root / "cline_docs_shared"
+    propagated_host_paths = []
+    if extra_paths and shared_dir.exists():
+        for host_path in extra_paths:
+            print(f"[DEBUG] Propagating to host path: {host_path}")
+            host_path_obj = Path(host_path)
+            host_path_obj.mkdir(parents=True, exist_ok=True)
+            for f in shared_dir.glob("*.md"):
+                print(f"[DEBUG] Copying {f} to {host_path_obj / f.name}")
+                shutil.copy2(f, host_path_obj / f.name)
+            propagated_host_paths.append(str(host_path_obj))
     # List updated sessions
     sessions_dir = team_root / "sessions"
     updated_sessions = [s.name for s in sessions_dir.iterdir() if s.is_dir()]
-    return {"status": "propagated", "sessions": updated_sessions}
+    return {
+        "status": "propagated",
+        "sessions": updated_sessions,
+        "host_paths": propagated_host_paths,
+    }
 
 
 @router.post("/api/team/{team}/cline_docs_shared/{filename}")
@@ -404,3 +455,48 @@ def remove_container(team: str, session: str):
         }
     except Exception as e:
         return {"status": "error", "error": str(e), "container_name": name}
+
+
+@router.post("/api/team/{team}/cline_docs_shared/propagate/{filename}")
+def propagate_single_cline_doc(team: str, filename: str):
+    print(
+        f"[DEBUG] propagate_single_cline_doc called for team: {team}, file: {filename}"
+    )
+    team_root = TEAMS_ROOT / team
+    if not team_root.exists():
+        raise HTTPException(status_code=404, detail="Team not found")
+    shared_dir = team_root / "cline_docs_shared"
+    file_path = shared_dir / filename
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404, detail="File not found in cline_docs_shared"
+        )
+    # Propagate to session payloads
+    sessions_dir = team_root / "sessions"
+    updated_sessions = []
+    for session in sessions_dir.iterdir():
+        if session.is_dir():
+            payload_dir = session / "payload"
+            payload_dir.mkdir(parents=True, exist_ok=True)
+            dest = payload_dir / filename
+            shutil.copy2(file_path, dest)
+            updated_sessions.append(session.name)
+    # Propagate to extra host paths if set
+    env_path = team_root / "config" / "env"
+    extra_paths = parse_extra_propagate_paths(env_path)
+    print(f"[DEBUG] EXTRA_PROPAGATE_PATHS: {extra_paths}")
+    propagated_host_paths = []
+    if extra_paths:
+        for host_path in extra_paths:
+            print(f"[DEBUG] Propagating single file to host path: {host_path}")
+            host_path_obj = Path(host_path)
+            host_path_obj.mkdir(parents=True, exist_ok=True)
+            dest = host_path_obj / filename
+            shutil.copy2(file_path, dest)
+            propagated_host_paths.append(str(dest))
+    return {
+        "status": "propagated_single_file",
+        "file": filename,
+        "sessions": updated_sessions,
+        "host_paths": propagated_host_paths,
+    }

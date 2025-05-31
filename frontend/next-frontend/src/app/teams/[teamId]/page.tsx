@@ -197,6 +197,7 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
     const [importTemplate, setImportTemplate] = useState('');
     const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
     const [snackbar, setSnackbar] = useState<{ open: boolean, message: string, severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+    const [propagateAllOpen, setPropagateAllOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch shared docs and template list
@@ -217,16 +218,29 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
     };
     const propagateDoc = async (filename: string) => {
         try {
+            const res = await fetch(`/api/team/${teamId}/cline_docs_shared/propagate/${filename}`, {
+                method: 'POST',
+            });
+            if (!res.ok) throw new Error('Failed to propagate');
+            const data = await res.json();
+            setSnackbar({ open: true, message: `Propagated '${filename}' to sessions: ${data.sessions.join(', ')}`, severity: 'success' });
+        } catch (e) {
+            setSnackbar({ open: true, message: 'Failed to propagate to sessions', severity: 'error' });
+        }
+    };
+    const propagateAllDocs = async () => {
+        setPropagateAllOpen(false);
+        try {
             const res = await fetch(`/api/team/${teamId}/cline_docs_shared/propagate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: '{}'
             });
-            if (!res.ok) throw new Error('Failed to propagate');
+            if (!res.ok) throw new Error('Failed to propagate all');
             const data = await res.json();
-            setSnackbar({ open: true, message: `Propagated to sessions: ${data.sessions.join(', ')}`, severity: 'success' });
+            setSnackbar({ open: true, message: `Propagated ALL docs to sessions: ${data.sessions.join(', ')}`, severity: 'success' });
         } catch (e) {
-            setSnackbar({ open: true, message: 'Failed to propagate to sessions', severity: 'error' });
+            setSnackbar({ open: true, message: 'Failed to propagate all docs', severity: 'error' });
         }
     };
     const handleImport = async (filename: string) => {
@@ -285,6 +299,7 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
                 {availableTemplates.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
             </Select>
             <Button variant="outlined" onClick={handleRestoreDefaults}>Restore Defaults</Button>
+            <Button variant="contained" color="warning" onClick={() => setPropagateAllOpen(true)}>Propagate All</Button>
             <input ref={fileInputRef} type="file" accept=".md" style={{ display: 'none' }} onChange={handleUpload} />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
@@ -301,7 +316,7 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
                     <Box>
                         <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
                             <Button variant="outlined" onClick={() => setEditing(!editing)}>{editing ? 'Cancel' : 'Edit'}</Button>
-                            <Button variant="outlined" onClick={() => propagateDoc(selected)}>Propagate</Button>
+                            <Button variant="outlined" color="primary" onClick={() => propagateDoc(selected)}>Propagate</Button>
                         </Box>
                         {editing ? (
                             <TextField multiline minRows={10} value={content} onChange={e => setContent(e.target.value)} fullWidth sx={{ mb: 2 }} />
@@ -328,6 +343,17 @@ function SharedDocsTab({ teamId }: { teamId: string }) {
             <DialogActions>
                 <Button onClick={() => setNewDocOpen(false)}>Cancel</Button>
                 <Button variant="contained" onClick={handleCreate}>Create</Button>
+            </DialogActions>
+        </Dialog>
+        <Dialog open={propagateAllOpen} onClose={() => setPropagateAllOpen(false)}>
+            <DialogTitle>Propagate ALL Shared Docs?</DialogTitle>
+            <DialogContent>
+                <Typography color="error" fontWeight="bold">Warning: This will overwrite all shared docs in every session and every extra host path. This cannot be undone!</Typography>
+                <Typography sx={{ mt: 2 }}>Are you sure you want to propagate <b>ALL</b> shared docs?</Typography>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setPropagateAllOpen(false)}>Cancel</Button>
+                <Button variant="contained" color="warning" onClick={propagateAllDocs}>Propagate All</Button>
             </DialogActions>
         </Dialog>
         <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })} message={snackbar.message} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
