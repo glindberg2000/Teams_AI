@@ -617,7 +617,9 @@ def instantiate_team(request: Request):
         # Normalize team name for directory and config/env usage
         normalized_name = name.replace(" ", "_")
         if name != normalized_name:
-            print(f"[WARN] Team name '{name}' contains spaces. Using '{normalized_name}' for directory and config.")
+            print(
+                f"[WARN] Team name '{name}' contains spaces. Using '{normalized_name}' for directory and config."
+            )
         name = normalized_name
         # Create team dir
         team_dir = PROJECT_ROOT / "teams" / name
@@ -1024,10 +1026,13 @@ def get_messages(
         # Filter by content_regex
         if content_regex:
             msgs = [m for m in msgs if re.search(content_regex, m["message"])]
-        # Sort by id ascending (oldest to newest)
-        msgs = sorted(msgs, key=lambda m: m["id"])
+        # Sort by id descending (newest to oldest)
+        msgs = sorted(msgs, key=lambda m: m["id"], reverse=True)
         # Apply limit
-        return msgs[:limit]
+        msgs = msgs[:limit]
+        # Reverse so newest are last (chronological order)
+        msgs = list(reversed(msgs))
+        return msgs
 
 
 # Update get_team_messages and query_team_messages to use channel param or default to 'general'
