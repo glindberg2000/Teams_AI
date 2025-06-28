@@ -89,6 +89,9 @@ export default function TeamsPage() {
                     Instantiate from Template
                 </Button>
             </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Teams with status 'scaffolded' have only their file system and configs created. Teams are 'ready' once containers/services are running. Use the CLI or orchestration tools to start containers after scaffolding.
+            </Typography>
             {loading && <CircularProgress />}
             {error && <Alert severity="error">{error}</Alert>}
             <Grid container spacing={2}>

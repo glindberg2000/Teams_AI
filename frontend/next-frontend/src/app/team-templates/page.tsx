@@ -128,7 +128,9 @@ export default function TeamTemplatesPage() {
                                         return role ? <Chip key={roleId} label={role.name} sx={{ mr: 1, mb: 1 }} /> : null;
                                     })}
                                 </Box>
-                                <Button variant="contained" sx={{ mt: 2 }} onClick={() => handleInstantiate(tpl)}>Instantiate</Button>
+                                <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>
+                                    To instantiate a team from this template, go to the Teams page and use 'Instantiate from Template'.
+                                </Typography>
                             </Card>
                         </Grid>
                     ))

@@ -245,6 +245,19 @@ async def generate_team_sessions(team: str, request: Request):
             return {"error": "team_cli.py not found"}, 500
         if not env_file.exists():
             return {"error": "env file not found for team"}, 500
+        # Clean up empty/incomplete session directories before running CLI
+        sessions_dir = team_dir / "sessions"
+        if sessions_dir.exists():
+            for session_dir in sessions_dir.iterdir():
+                if session_dir.is_dir():
+                    devcontainer_dir = session_dir / ".devcontainer"
+                    # If .devcontainer is missing or empty, remove the session dir
+                    if not devcontainer_dir.exists() or not any(
+                        devcontainer_dir.iterdir()
+                    ):
+                        import shutil
+
+                        shutil.rmtree(session_dir)
         # Preprocess env: fill empty or commented values with dummy data
         cleaned_lines = []
         with open(env_file) as f:
@@ -307,6 +320,39 @@ async def generate_team_sessions(team: str, request: Request):
         created = re.findall(r"Created session: ([^\n]+)", result.stdout)
         skipped = re.findall(r"Skipped session: ([^\n]+)", result.stdout)
         errors = re.findall(r"Error: ([^\n]+)", result.stderr + result.stdout)
+        # After CLI runs, check for devcontainer in each session
+        sessions_dir = team_dir / "sessions"
+        missing_devcontainers = []
+        empty_devcontainers = []
+        if sessions_dir.exists():
+            for session_dir in sessions_dir.iterdir():
+                if session_dir.is_dir():
+                    devcontainer_dir = session_dir / ".devcontainer"
+                    if not devcontainer_dir.exists():
+                        missing_devcontainers.append(str(devcontainer_dir))
+                    elif not any(devcontainer_dir.iterdir()):
+                        empty_devcontainers.append(str(devcontainer_dir))
+        # Parse CLI stdout for warnings about missing devcontainer templates
+        devcontainer_warning = False
+        if (
+            "No .devcontainer directory found" in result.stdout
+            or "No .devcontainer directory found" in result.stderr
+        ):
+            devcontainer_warning = True
+        if missing_devcontainers or empty_devcontainers or devcontainer_warning:
+            return {
+                "status": "error",
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "missing_devcontainers": missing_devcontainers,
+                "empty_devcontainers": empty_devcontainers,
+                "devcontainer_warning": devcontainer_warning,
+                "command": " ".join(cmd),
+                "exit_code": result.returncode,
+                "env_file": tmp_env_path,
+                "env_contents": env_contents,
+                "error": "One or more .devcontainer directories were not created or are empty. Check that templates/devcontainer exists and is populated.",
+            }, 500
         return {
             "status": "ok" if result.returncode == 0 else "error",
             "stdout": result.stdout,
